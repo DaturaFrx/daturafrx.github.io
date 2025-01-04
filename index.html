@@ -1,276 +1,58 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Peticiones</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0a0a0a;
-            color: #e0e0e0;
+            margin: 0;
+            overflow: hidden;
+            background: #111;
         }
-        .bg-dark-elegant {
-            background-color: #121212;
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            animation: move 4s linear infinite;
         }
-        .text-muted {
-            color: #888888;
-        }
-        .border-accent {
-            border-color: #1a1a1a;
-        }
-        .hover-highlight:hover {
-            background-color: #1e1e1e;
-            transition: background-color 0.3s ease;
-        }
-        .shadow-elegant {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        @keyframes move {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(100%, 100%); }
+            50% { transform: translate(0, 200%); }
+            75% { transform: translate(200%, 0); }
+            100% { transform: translate(0, 0); }
         }
     </style>
 </head>
-<body class="min-h-screen bg-black p-4">
-    <div class="container mx-auto max-w-xl">
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-bold text-white tracking-tight mb-2">Peticiones</h1>
-            <p class="text-gray-400 text-sm">Elige la música que quieres escuchar</p>
-        </header>
-        
-        <!-- Formulario de Petición -->
-        <div class="mb-8 bg-dark-elegant rounded-xl p-6 shadow-elegant">
-            <form id="peticionForm" class="space-y-4">
-                <div>
-                    <label for="nombreArtista" class="block text-sm text-gray-300 mb-2">Nombre del Artista</label>
-                    <input 
-                        type="text" 
-                        id="nombreArtista" 
-                        placeholder="Escribe el nombre del artista" 
-                        required 
-                        class="w-full p-3 bg-black text-white rounded-lg border border-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-600"
-                    >
-                </div>
-                <div>
-                    <label for="nombreCancion" class="block text-sm text-gray-300 mb-2">Nombre de la Canción</label>
-                    <input 
-                        type="text" 
-                        id="nombreCancion" 
-                        placeholder="Escribe el nombre de la canción" 
-                        required 
-                        class="w-full p-3 bg-black text-white rounded-lg border border-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-600"
-                    >
-                </div>
-                <button 
-                    type="submit" 
-                    id="submitButton"
-                    class="w-full bg-gray-800 text-white p-3 rounded-lg hover:bg-gray-700 transition-colors duration-300"
-                >
-                    Enviar Petición
-                </button>
-                <p id="tiempoEspera" class="text-red-500 text-center hidden"></p>
-            </form>
-        </div>
-
-        <!-- Lista de Peticiones -->
-        <section>
-            <h2 class="text-2xl font-semibold text-white mb-4">Peticiones Actuales</h2>
-            <div id="listaPeticiones" class="space-y-4"></div>
-        </section>
-    </div>
-
+<body>
     <script>
-        // Configuración de Firebase (igual que antes)
-        const firebaseConfig = {
-            apiKey: "AIzaSyBq9_O298OmuN4z1-R58NNNoGla8kL-5Rg",
-            authDomain: "server-47133.firebaseapp.com",
-            databaseURL: "https://server-47133-default-rtdb.firebaseio.com",
-            projectId: "server-47133",
-            storageBucket: "server-47133.firebasestorage.app",
-            messagingSenderId: "297740261380",
-            appId: "1:297740261380:web:7067719918a5410575bd51",
-            measurementId: "G-ENWSGJSNTL"
-        };
-
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const peticionesRef = database.ref('peticiones');
-
-        // Generar ID único para el usuario
-        function generarIdUnico() {
-            let userId = localStorage.getItem('userId');
-            
-            if (!userId) {
-                userId = Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('userId', userId);
-            }
-            
-            return userId;
+        function createShape() {
+            const shape = document.createElement('div');
+            shape.className = 'shape';
+            const size = Math.random() * 80 + 20;
+            shape.style.width = size + 'px';
+            shape.style.height = size + 'px';
+            shape.style.left = Math.random() * window.innerWidth + 'px';
+            shape.style.top = Math.random() * window.innerHeight + 'px';
+            const hue = Math.random() * 360;
+            shape.style.backgroundColor = `hsl(${hue}, 70%, 50%)`;
+            shape.style.boxShadow = `0 0 20px hsl(${hue}, 70%, 50%)`;
+            shape.style.animationDuration = (Math.random() * 3 + 2) + 's';
+            shape.style.animationDelay = (Math.random() * 1) + 's';
+            document.body.appendChild(shape);
         }
 
-        // Verificar tiempo de espera para peticiones
-        function verificarTiempoEspera() {
-            const ultimaPeticion = localStorage.getItem('ultimaPeticion');
-            const tiempoActual = new Date().getTime();
-            const tiempoEspera = 2 * 60 * 1000; // 2 minutos en milisegundos
-
-            const submitButton = document.getElementById('submitButton');
-            const tiempoEsperaElemento = document.getElementById('tiempoEspera');
-
-            if (ultimaPeticion) {
-                const tiempoTranscurrido = tiempoActual - parseInt(ultimaPeticion);
-                
-                if (tiempoTranscurrido < tiempoEspera) {
-                    const tiempoRestante = Math.ceil((tiempoEspera - tiempoTranscurrido) / 1000);
-                    
-                    submitButton.disabled = true;
-                    submitButton.classList.add('opacity-50', 'cursor-not-allowed');
-                    
-                    tiempoEsperaElemento.textContent = `Por favor, espera ${tiempoRestante} segundos antes de hacer otra petición.`;
-                    tiempoEsperaElemento.classList.remove('hidden');
-
-                    // Contador regresivo
-                    const intervalId = setInterval(() => {
-                        const tiempoRestanteActual = Math.ceil((tiempoEspera - (new Date().getTime() - parseInt(ultimaPeticion))) / 1000);
-                        
-                        if (tiempoRestanteActual > 0) {
-                            tiempoEsperaElemento.textContent = `Por favor, espera ${tiempoRestanteActual} segundos antes de hacer otra petición.`;
-                        } else {
-                            clearInterval(intervalId);
-                            submitButton.disabled = false;
-                            submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                            tiempoEsperaElemento.classList.add('hidden');
-                        }
-                    }, 1000);
-
-                    return false;
-                }
-            }
-            return true;
+        for (let i = 0; i < 20; i++) {
+            createShape();
         }
 
-        // Envío de Petición
-        document.getElementById('peticionForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        setInterval(createShape, 2000);
 
-            // Verificar tiempo de espera
-            if (!verificarTiempoEspera()) {
-                return;
+        window.addEventListener('resize', () => {
+            document.body.innerHTML = '';
+            for (let i = 0; i < 20; i++) {
+                createShape();
             }
-
-            const nombreArtista = document.getElementById('nombreArtista').value;
-            const nombreCancion = document.getElementById('nombreCancion').value;
-            const userId = generarIdUnico();
-
-            const nuevaPeticion = {
-                artista: nombreArtista,
-                cancion: nombreCancion,
-                votos: 0,
-                timestamp: firebase.database.ServerValue.TIMESTAMP,
-                votantes: {}, // Nuevo campo para rastrear votantes
-                userId: userId // Añadir ID de usuario a la petición
-            };
-
-            peticionesRef.push(nuevaPeticion);
-            
-            // Guardar tiempo de última petición
-            localStorage.setItem('ultimaPeticion', new Date().getTime().toString());
-            
-            this.reset();
         });
 
-        // Renderizar Peticiones
-        function renderPeticiones(peticiones) {
-            const listaElemento = document.getElementById('listaPeticiones');
-            listaElemento.innerHTML = '';
-
-            const userId = generarIdUnico();
-
-            Object.entries(peticiones).forEach(([key, peticion]) => {
-                const tiempoActual = new Date().getTime();
-                const tiempoPeticion = new Date(peticion.timestamp).getTime();
-                const diferenciaHoras = (tiempoActual - tiempoPeticion) / (1000 * 3600);
-
-                if (diferenciaHoras <= 24) {
-                    const tarjetaPeticion = document.createElement('div');
-                    tarjetaPeticion.className = 'bg-dark-elegant p-4 rounded-lg flex justify-between items-center hover-highlight border border-accent';
-                    
-                    // Verificar si el usuario ya ha votado
-                    const yaVoto = peticion.votantes && peticion.votantes[userId];
-                    
-                    tarjetaPeticion.innerHTML = `
-                        <div>
-                            <h3 class="text-lg font-semibold text-white">${peticion.cancion}</h3>
-                            <p class="text-muted">${peticion.artista}</p>
-                        </div>
-                        <div class="flex items-center space-x-3">
-                            <span class="text-gray-400">${peticion.votos} Votos</span>
-                            <button 
-                                onclick="toggleVoto('${key}')" 
-                                class="bg-${yaVoto ? 'red' : 'gray'}-700 text-white px-3 py-1 rounded-md hover:bg-${yaVoto ? 'red' : 'gray'}-600 transition-colors duration-300"
-                            >
-                                ${yaVoto ? 'Quitar Voto' : 'Votar'}
-                            </button>
-                        </div>
-                    `;
-                    listaElemento.appendChild(tarjetaPeticion);
-                }
-            });
-        }
-
-        // Alternar Voto
-        function toggleVoto(keyPeticion) {
-            const userId = generarIdUnico();
-            const referenciasPeticion = peticionesRef.child(keyPeticion);
-
-            referenciasPeticion.transaction((peticionActual) => {
-                if (peticionActual) {
-                    // Inicializar votantes si no existe
-                    if (!peticionActual.votantes) {
-                        peticionActual.votantes = {};
-                    }
-
-                    // Si ya votó, quitar voto
-                    if (peticionActual.votantes[userId]) {
-                        delete peticionActual.votantes[userId];
-                        peticionActual.votos = Math.max(0, peticionActual.votos - 1);
-                    } 
-                    // Si no ha votado, agregar voto
-                    else {
-                        peticionActual.votantes[userId] = true;
-                        peticionActual.votos = (peticionActual.votos || 0) + 1;
-                    }
-                }
-                return peticionActual;
-            });
-        }
-
-        // Escuchar Cambios en Peticiones
-        peticionesRef.on('value', (snapshot) => {
-            const peticiones = snapshot.val() || {};
-            renderPeticiones(peticiones);
-        });
-
-        // Limpiar Peticiones Antiguas
-        setInterval(() => {
-            const tiempoActual = new Date().getTime();
-            peticionesRef.once('value', (snapshot) => {
-                const peticiones = snapshot.val() || {};
-                Object.entries(peticiones).forEach(([key, peticion]) => {
-                    const tiempoPeticion = new Date(peticion.timestamp).getTime();
-                    const diferenciaHoras = (tiempoActual - tiempoPeticion) / (1000 * 3600);
-                    
-                    if (diferenciaHoras > 24) {
-                        peticionesRef.child(key).remove();
-                    }
-                });
-            });
-        }, 3600000);
-
-        // Verificar tiempo de espera al cargar la página
-        window.onload = verificarTiempoEspera;
+        document.addEventListener('contextmenu', e => e.preventDefault());
     </script>
 </body>
 </html>
