@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FUCK MEEEE</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .post { border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
+        .post-title { font-size: 20px; font-weight: bold; }
+        .post-date { color: #777; }
+        .edit-button, .delete-button { margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Manager</h1>
+
+    <div id="blog-section" style="display:none;">
+        <div>
+            <label for="category">Category:</label>
+            <select id="category">
+                <option value="posts">Posts</option>
+                <option value="music">Music</option>
+                <option value="pictures">Pictures</option>
+            </select>
+        </div>
+
+        <div>
+            <h3>Create or Edit a Post</h3>
+            <input type="hidden" id="post-id" value="">
+            <label for="post-title">Title:</label>
+            <input type="text" id="post-title" placeholder="Enter title"><br><br>
+
+            <label for="post-content">Content:</label><br>
+            <textarea id="post-content" rows="4" cols="50" placeholder="Enter content"></textarea><br><br>
+
+            <label for="post-date">Date:</label>
+            <input type="date" id="post-date"><br><br>
+
+            <button id="save-post-button">Save Post</button>
+        </div>
+
+        <h3>Blog Entries</h3>
+        <div id="posts-container">
+            <!-- Blog posts will be displayed here -->
+        </div>
+    </div>
+
+    <div id="login-error" style="color:red; display:none;">Access Denied: Incorrect Password</div>
+
+    <script type="module">
+        // Import Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBe1NhTQzJYd695UMnmg-xbiM73qbmYBZs",
+            authDomain: "blog-c3484.firebaseapp.com",
+            projectId: "blog-c3484",
+            storageBucket: "blog-c3484.appspot.com",
+            messagingSenderId: "352963794904",
+            appId: "1:352963794904:web:5637900dfd52f48e6bc4ad",
+            measurementId: "G-ZLBCG2SJCH"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Hardcoded password (Replace 'admin' with your actual password)
+        const hardcodedPassword = "I was born in the USA";
+
+        // Function to hash the password using SHA-256
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Function to check if the hardcoded password hash matches the one stored in Firebase
+        async function verifyPassword() {
+            const hardcodedPasswordHash = await hashPassword(hardcodedPassword);
+            const adminPasswordRef = ref(database, "adminPassword");
+            onValue(adminPasswordRef, (snapshot) => {
+                const storedPasswordHash = snapshot.val();
+                if (hardcodedPasswordHash === storedPasswordHash) {
+                    // Password is correct, show the blog management system
+                    document.getElementById("blog-section").style.display = "block";
+                    fetchPosts(); // Load posts immediately after verification
+                } else {
+                    // Incorrect password, show error message
+                    document.getElementById("login-error").style.display = "block";
+                }
+            });
+        }
+
+        // Call the password verification function when the page loads
+        window.onload = verifyPassword;
+
+        // Blog management functionality (only accessible if the password is correct)
+
+        // Function to clear the form
+        function clearForm() {
+            document.getElementById("post-id").value = "";
+            document.getElementById("post-title").value = "";
+            document.getElementById("post-content").value = "";
+            document.getElementById("post-date").value = "";
+        }
+
+        // Function to save a new post or update an existing one
+        document.getElementById("save-post-button").addEventListener("click", function() {
+            const postId = document.getElementById("post-id").value;
+            const category = document.getElementById("category").value;
+            const title = document.getElementById("post-title").value;
+            const content = document.getElementById("post-content").value;
+            const date = document.getElementById("post-date").value;
+
+            const postsRef = ref(database, `${category}`);
+            const postData = { title, content, date };
+
+            if (postId) {
+                // Update existing post
+                const postRef = ref(database, `${category}/${postId}`);
+                update(postRef, postData);
+            } else {
+                // Create a new post
+                push(postsRef, postData);
+            }
+
+            clearForm();
+            fetchPosts(); // Refresh the posts after saving
+        });
+
+        // Function to fetch and display posts
+        function fetchPosts() {
+            const category = document.getElementById("category").value;
+            const postsRef = ref(database, category);
+            const postsContainer = document.getElementById("posts-container");
+
+            onValue(postsRef, (snapshot) => {
+                postsContainer.innerHTML = ''; // Clear the existing posts
+                const data = snapshot.val();
+                for (let key in data) {
+                    if (data.hasOwnProperty(key)) {
+                        const post = data[key];
+                        const postElement = createPostElement(post, key, category);
+                        postsContainer.appendChild(postElement);
+                    }
+                }
+            });
+        }
+
+        // Function to create a post element
+        function createPostElement(post, postId, category) {
+            const postElement = document.createElement('div');
+            postElement.className = 'post';
+
+            postElement.innerHTML = `
+                <div class="post-title">${post.title}</div>
+                <div class="post-date">${post.date}</div>
+                <div class="post-content">${post.content}</div>
+                <button class="edit-button" data-id="${postId}" data-category="${category}">Edit</button>
+                <button class="delete-button" data-id="${postId}" data-category="${category}">Delete</button>
+            `;
+
+            // Add event listeners for edit and delete buttons
+            postElement.querySelector('.edit-button').addEventListener('click', () => editPost(postId, category));
+            postElement.querySelector('.delete-button').addEventListener('click', () => deletePost(postId, category));
+
+            return postElement;
+        }
+
+        // Function to edit a post
+        function editPost(postId, category) {
+            const postRef = ref(database, `${category}/${postId}`);
+            onValue(postRef, (snapshot) => {
+                const post = snapshot.val();
+                document.getElementById("post-id").value = postId;
+                document.getElementById("post-title").value = post.title;
+                document.getElementById("post-content").value = post.content;
+                document.getElementById("post-date").value = post.date;
+            });
+        }
+
+        // Function to delete a post
+        function deletePost(postId, category) {
+            const postRef = ref(database, `${category}/${postId}`);
+            remove(postRef).then(() => {
+                fetchPosts(); // Refresh the posts after deletion
+            });
+        }
+
+        // Fetch posts whenever the category is changed
+        document.getElementById("category").addEventListener("change", fetchPosts);
+    </script>
+</body>
+</html>
