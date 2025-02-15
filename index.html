@@ -21,40 +21,117 @@
     <div id="textContainer"></div>
   </div>
 
+  <!-- Section for Videos -->
+  <div class="section" id="videosSection">
+    <h2>Videos</h2>
+    <div id="videosContainer"></div>
+  </div>
+
+  <!-- Section for Audio Files -->
+  <div class="section" id="audioSection">
+    <h2>Audio Files</h2>
+    <div id="audioContainer"></div>
+  </div>
+
+  <!-- Section for PDFs -->
+  <div class="section" id="pdfSection">
+    <h2>PDFs</h2>
+    <div id="pdfContainer"></div>
+  </div>
+
+  <!-- Section for Other Files -->
+  <div class="section" id="otherSection">
+    <h2>Other Files</h2>
+    <div id="otherContainer"></div>
+  </div>
+
   <script>
     // Update these with your GitHub username and repository name
     const repoOwner = 'DaturaFrx';
     const repoName  = 'daturafrx.github.io';
     const directoryPath = 'awesomeStuff';
-    
     const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${directoryPath}`;
+
+    // Define file type groups
+    const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    const textTypes  = ['txt', 'md'];
+    const videoTypes = ['mp4', 'webm', 'ogv'];
+    const audioTypes = ['mp3', 'wav', 'flac'];
+    const pdfTypes   = ['pdf'];
+
+    // Helper to create a file card with preview (if available), view & download links.
+    function createFileCard(file, previewElement) {
+      const card = document.createElement('div');
+      card.classList.add('file-card');
+
+      const title = document.createElement('div');
+      title.classList.add('file-title');
+      title.innerText = file.name;
+      card.appendChild(title);
+
+      if (previewElement) {
+        card.appendChild(previewElement);
+      }
+
+      const linksDiv = document.createElement('div');
+      linksDiv.classList.add('file-links');
+
+      const viewLink = document.createElement('a');
+      viewLink.href = file.download_url;
+      viewLink.target = '_blank';
+      viewLink.innerText = 'View';
+      linksDiv.appendChild(viewLink);
+
+      const downloadLink = document.createElement('a');
+      downloadLink.href = file.download_url;
+      downloadLink.download = file.name;
+      downloadLink.innerText = 'Download';
+      linksDiv.appendChild(downloadLink);
+
+      card.appendChild(linksDiv);
+      return card;
+    }
 
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
         data.forEach(file => {
           const fileName = file.name;
-          const fileUrl = file.download_url;
           const extension = fileName.split('.').pop().toLowerCase();
+          let previewElement = null;
+          let containerId = '';
 
-          if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
-            const img = document.createElement('img');
-            img.src = fileUrl;
-            img.alt = fileName;
-            document.getElementById('imagesContainer').appendChild(img);
-          } else if (['txt', 'md'].includes(extension)) {
-            const link = document.createElement('a');
-            link.href = fileUrl;
-            link.target = '_blank';
-            link.innerText = fileName;
-            document.getElementById('textContainer').appendChild(link);
+          if (imageTypes.includes(extension)) {
+            previewElement = document.createElement('img');
+            previewElement.src = file.download_url;
+            previewElement.alt = fileName;
+            containerId = 'imagesContainer';
+          } else if (videoTypes.includes(extension)) {
+            previewElement = document.createElement('video');
+            previewElement.src = file.download_url;
+            previewElement.controls = true;
+            previewElement.width = 300;
+            containerId = 'videosContainer';
+          } else if (audioTypes.includes(extension)) {
+            previewElement = document.createElement('audio');
+            previewElement.src = file.download_url;
+            previewElement.controls = true;
+            containerId = 'audioContainer';
+          } else if (pdfTypes.includes(extension)) {
+            previewElement = document.createElement('iframe');
+            previewElement.src = file.download_url;
+            previewElement.width = '100%';
+            previewElement.height = '400';
+            containerId = 'pdfContainer';
+          } else if (textTypes.includes(extension)) {
+            // No embedded preview for text; just use the text container.
+            containerId = 'textContainer';
           } else {
-            const link = document.createElement('a');
-            link.href = fileUrl;
-            link.target = '_blank';
-            link.innerText = fileName;
-            document.getElementById('textContainer').appendChild(link);
+            containerId = 'otherContainer';
           }
+
+          const fileCard = createFileCard(file, previewElement);
+          document.getElementById(containerId).appendChild(fileCard);
         });
       })
       .catch(error => {
