@@ -11,26 +11,62 @@
     <p>Open the console to see Appwrite responses.</p>
 
     <script>
-        // Initialize Appwrite client
-        const client = new Appwrite.Client()
-            .setEndpoint('https://cloud.appwrite.io/v1')
-            .setProject('67afcea40030753236db');
-        
-        const databases = new Appwrite.Databases(client);
+    // Initialize Appwrite SDK
+    const client = new Appwrite.Client()
+        .setEndpoint('https://cloud.appwrite.io/v1') // Appwrite Cloud Endpoint
+        .setProject('67afcea40030753236db'); // Your actual project ID
 
-        const databaseId = 'generalDB';
-        const collectionId = 'text';
+    const databases = new Appwrite.Databases(client);
 
-        // Create a new document (store text)
-        databases.createDocument(databaseId, collectionId, 'unique()', {
-            text: "Hello from Appwrite!"
-        })
-        .then(response => {
+    // Define IDs (these can be anything)
+    const databaseId = 'generalDB'; // You can change this to a unique ID
+    const collectionId = 'textCollection'; // Change if needed
+
+    async function setupDatabase() {
+        try {
+            // Check if the database exists, or create it
+            await databases.get(databaseId);
+            console.log("Database already exists.");
+        } catch (error) {
+            if (error.code === 404) {
+                console.log("Database not found. Creating...");
+                await databases.create(databaseId, 'General Database');
+            } else {
+                console.error("Error checking/creating database:", error);
+                return;
+            }
+        }
+
+        try {
+            // Check if the collection exists, or create it
+            await databases.getCollection(databaseId, collectionId);
+            console.log("Collection already exists.");
+        } catch (error) {
+            if (error.code === 404) {
+                console.log("Collection not found. Creating...");
+                await databases.createCollection(databaseId, collectionId, 'Text Collection', ['role:all']);
+
+                // Add a 'text' field to the collection
+                await databases.createStringAttribute(databaseId, collectionId, 'text', 255, true);
+            } else {
+                console.error("Error checking/creating collection:", error);
+                return;
+            }
+        }
+
+        // Now create a document in the collection
+        try {
+            const response = await databases.createDocument(databaseId, collectionId, 'unique()', {
+                text: "Hello from Appwrite!"
+            });
             console.log("Document Created Successfully:", response);
-        })
-        .catch(error => {
+        } catch (error) {
             console.error("Error creating document:", error);
-        });
-    </script>
+        }
+    }
+
+    // Run the setup
+    setupDatabase();
+</script>
 </body>
 </html>
