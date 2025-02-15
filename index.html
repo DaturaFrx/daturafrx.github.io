@@ -8,14 +8,29 @@
 </head>
 <body>
     <h1>Hello, World!</h1>
-    <p>Check the console for Appwrite client initialization.</p>
+    <p>Open the console to see Appwrite responses.</p>
 
     <script>
-        const client = new Appwrite.Client();
-        client.setEndpoint('https://cloud.appwrite.io/v1') // Default Appwrite Cloud endpoint
-              .setProject('67afcea40030753236db'); // Your project ID
+        // Initialize Appwrite client
+        const client = new Appwrite.Client()
+            .setEndpoint('https://cloud.appwrite.io/v1')
+            .setProject('67afcea40030753236db');
+        
+        const databases = new Appwrite.Databases(client);
 
-        console.log("Appwite client initiawized!!! UwU:", client);
+        const databaseId = 'generalDB';
+        const collectionId = 'text';
+
+        // Create a new document (store text)
+        databases.createDocument(databaseId, collectionId, 'unique()', {
+            text: "Hello from Appwrite!"
+        })
+        .then(response => {
+            console.log("Document Created Successfully:", response);
+        })
+        .catch(error => {
+            console.error("Error creating document:", error);
+        });
     </script>
 </body>
 </html>
