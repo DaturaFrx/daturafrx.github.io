@@ -56,6 +56,12 @@ h1 {
   border-radius: 8px;
   padding: 15px;
   margin-bottom: 15px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.file-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
 .file-title {
@@ -89,26 +95,11 @@ img {
   margin-top: 10px;
 }
 
-video, audio, iframe {
+video, audio {
   display: block;
   margin-top: 10px;
   max-width: 100%;
   border-radius: 4px;
-}
-
-/* PDF Preview Button */
-.pdf-preview button {
-  background-color: var(--primary-color);
-  color: var(--background-color);
-  border: none;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.3s ease;
-}
-
-.pdf-preview button:hover {
-  background-color: var(--secondary-color);
 }
 
 /* Responsive Grid Layout for Cards */
