@@ -7,13 +7,15 @@
   box-sizing: border-box;
 }
 
-/* CSS Variables for easy theming */
+/* CSS Variables for Dark Theme with Hot Pink Accent */
 :root {
-  --primary-color: #3498db;
-  --secondary-color: #2ecc71;
-  --background-color: #f9f9f9;
-  --text-color: #333;
-  --heading-color: #222;
+  --primary-color: #FF69B4;       /* Hot Pink */
+  --secondary-color: #ff85c1;     /* Lighter variant */
+  --background-color: #121212;    /* Dark background */
+  --text-color: #e0e0e0;
+  --heading-color: #ffffff;
+  --card-background: #1e1e1e;
+  --card-border: #333;
   --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
@@ -47,41 +49,58 @@ h1 {
   color: var(--heading-color);
 }
 
-/* Images Container Styling */
-#imagesContainer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+/* File Card Styles */
+.file-card {
+  background-color: var(--card-background);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
 }
 
-#imagesContainer img {
-  max-width: 200px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 4px;
-  background: #fff;
-  transition: transform 0.3s ease;
+.file-title {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: var(--primary-color);
 }
 
-#imagesContainer img:hover {
-  transform: scale(1.05);
+.file-links {
+  margin-top: 10px;
 }
 
-/* Text Container Styling */
-#textContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-#textContainer a {
+.file-links a {
   color: var(--primary-color);
   text-decoration: none;
+  margin-right: 15px;
   font-weight: bold;
   transition: color 0.3s ease;
 }
 
-#textContainer a:hover {
+.file-links a:hover {
   color: var(--secondary-color);
   text-decoration: underline;
+}
+
+/* Media Elements */
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+video, audio, iframe {
+  display: block;
+  margin-top: 10px;
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+/* Responsive Grid Layout for Cards */
+@media (min-width: 768px) {
+  .section > div {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+  }
 }
