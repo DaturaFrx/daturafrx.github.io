@@ -96,6 +96,21 @@ video, audio, iframe {
   border-radius: 4px;
 }
 
+/* PDF Preview Button */
+.pdf-preview button {
+  background-color: var(--primary-color);
+  color: var(--background-color);
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.pdf-preview button:hover {
+  background-color: var(--secondary-color);
+}
+
 /* Responsive Grid Layout for Cards */
 @media (min-width: 768px) {
   .section > div {
