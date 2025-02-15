@@ -59,7 +59,7 @@
     const audioTypes = ['mp3', 'wav', 'flac'];
     const pdfTypes   = ['pdf'];
 
-    // Helper to create a file card with preview (if available), view & download links.
+    // Create a card for each file with preview (if available) and links.
     function createFileCard(file, previewElement) {
       const card = document.createElement('div');
       card.classList.add('file-card');
@@ -92,6 +92,29 @@
       return card;
     }
 
+    // For PDFs, create a preview container with a button.
+    function createPdfPreview(file) {
+      const container = document.createElement('div');
+      container.classList.add('pdf-preview');
+
+      const previewButton = document.createElement('button');
+      previewButton.innerText = 'Preview PDF';
+      previewButton.addEventListener('click', function() {
+        // Only load the iframe on demand.
+        if (!container.querySelector('iframe')) {
+          const iframe = document.createElement('iframe');
+          iframe.src = file.download_url;
+          iframe.width = '100%';
+          iframe.height = '300'; // smaller preview size
+          iframe.style.marginTop = '10px';
+          container.appendChild(iframe);
+          previewButton.disabled = true;
+        }
+      });
+      container.appendChild(previewButton);
+      return container;
+    }
+
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
@@ -118,13 +141,10 @@
             previewElement.controls = true;
             containerId = 'audioContainer';
           } else if (pdfTypes.includes(extension)) {
-            previewElement = document.createElement('iframe');
-            previewElement.src = file.download_url;
-            previewElement.width = '100%';
-            previewElement.height = '400';
+            // Instead of auto-loading an iframe, create a preview button.
+            previewElement = createPdfPreview(file);
             containerId = 'pdfContainer';
           } else if (textTypes.includes(extension)) {
-            // No embedded preview for text; just use the text container.
             containerId = 'textContainer';
           } else {
             containerId = 'otherContainer';
@@ -132,6 +152,13 @@
 
           const fileCard = createFileCard(file, previewElement);
           document.getElementById(containerId).appendChild(fileCard);
+        });
+
+        // Hide sections that have no files.
+        document.querySelectorAll('.section').forEach(section => {
+          if (!section.querySelector('.file-card')) {
+            section.style.display = 'none';
+          }
         });
       })
       .catch(error => {
