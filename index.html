@@ -59,7 +59,7 @@
     const audioTypes = ['mp3', 'wav', 'flac'];
     const pdfTypes   = ['pdf'];
 
-    // Create a card for each file with preview (if available) and links.
+    // Create a card for each file with preview (if applicable) and links.
     function createFileCard(file, previewElement) {
       const card = document.createElement('div');
       card.classList.add('file-card');
@@ -92,29 +92,6 @@
       return card;
     }
 
-    // For PDFs, create a preview container with a button.
-    function createPdfPreview(file) {
-      const container = document.createElement('div');
-      container.classList.add('pdf-preview');
-
-      const previewButton = document.createElement('button');
-      previewButton.innerText = 'Preview PDF';
-      previewButton.addEventListener('click', function() {
-        // Only load the iframe on demand.
-        if (!container.querySelector('iframe')) {
-          const iframe = document.createElement('iframe');
-          iframe.src = file.download_url;
-          iframe.width = '100%';
-          iframe.height = '300'; // smaller preview size
-          iframe.style.marginTop = '10px';
-          container.appendChild(iframe);
-          previewButton.disabled = true;
-        }
-      });
-      container.appendChild(previewButton);
-      return container;
-    }
-
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
@@ -141,8 +118,7 @@
             previewElement.controls = true;
             containerId = 'audioContainer';
           } else if (pdfTypes.includes(extension)) {
-            // Instead of auto-loading an iframe, create a preview button.
-            previewElement = createPdfPreview(file);
+            // For PDFs, simply show the card with View/Download links.
             containerId = 'pdfContainer';
           } else if (textTypes.includes(extension)) {
             containerId = 'textContainer';
