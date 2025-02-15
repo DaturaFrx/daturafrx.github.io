@@ -63,11 +63,11 @@
     async function setupDatabase() {
       // Check if the database exists, or create it
       try {
-        const dbList = await databases.list();
+        const dbList = await databases.listDatabases();
         const dbExists = dbList.databases.some(db => db.$id === databaseId);
         if (!dbExists) {
           console.log("Database not found. Creating...");
-          await databases.create(databaseId, 'General Database');
+          await databases.createDatabase(databaseId, 'General Database');
         } else {
           console.log("Database already exists.");
         }
