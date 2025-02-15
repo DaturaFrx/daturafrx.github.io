@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Global VOIP Chat</title>
+    <style>
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .login-screen {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .participants {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+        }
+        .participant {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .active { background-color: #4CAF50; }
+        .muted { background-color: #f44336; }
+        .error { color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loginScreen" class="login-screen">
+            <h2>Enter Your Name</h2>
+            <input type="text" id="userName" placeholder="Your name">
+            <button onclick="joinChat()">Join Chat</button>
+            <p id="loginError" class="error"></p>
+        </div>
+
+        <div id="chatScreen" style="display: none;">
+            <h1>Global VOIP Chat</h1>
+            <div class="controls">
+                <button id="toggleMute" onclick="toggleMute()">Mute</button>
+            </div>
+
+            <div class="participants">
+                <h2>Participants</h2>
+                <div id="participantList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let localStream = null;
+        let localUserData = {
+            id: null,
+            name: null,
+            muted: false
+        };
+
+        // Simulate server-side storage with localStorage
+        function getConnectedUsers() {
+            return JSON.parse(localStorage.getItem('connectedUsers') || '[]');
+        }
+
+        function saveConnectedUsers(users) {
+            localStorage.setItem('connectedUsers', JSON.stringify(users));
+        }
+
+        function isNameTaken(name) {
+            const users = getConnectedUsers();
+            return users.some(user => user.name.toLowerCase() === name.toLowerCase());
+        }
+
+        function checkExistingSession() {
+            const sessionId = localStorage.getItem('sessionId');
+            const userName = localStorage.getItem('userName');
+            
+            if (sessionId && userName) {
+                localUserData.id = sessionId;
+                localUserData.name = userName;
+                return true;
+            }
+            return false;
+        }
+
+        async function joinChat() {
+            const nameInput = document.getElementById('userName');
+            const name = nameInput.value.trim();
+            const errorElement = document.getElementById('loginError');
+            
+            if (!name) {
+                errorElement.textContent = 'Please enter a name';
+                return;
+            }
+
+            if (isNameTaken(name)) {
+                errorElement.textContent = 'This name is already in use';
+                return;
+            }
+
+            try {
+                // Request microphone access
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Generate unique session ID
+                localUserData.id = 'user_' + Date.now();
+                localUserData.name = name;
+                
+                // Save session data
+                localStorage.setItem('sessionId', localUserData.id);
+                localStorage.setItem('userName', name);
+                
+                // Add user to connected users
+                const users = getConnectedUsers();
+                users.push({
+                    id: localUserData.id,
+                    name: localUserData.name,
+                    muted: false
+                });
+                saveConnectedUsers(users);
+                
+                // Show chat screen
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('chatScreen').style.display = 'block';
+                
+                updateParticipantList();
+                setupConnectionHandlers();
+            } catch (err) {
+                errorElement.textContent = 'Could not access microphone';
+                console.error('Error accessing microphone:', err);
+            }
+        }
+
+        function toggleMute() {
+            if (localStream) {
+                localUserData.muted = !localUserData.muted;
+                localStream.getAudioTracks().forEach(track => {
+                    track.enabled = !localUserData.muted;
+                });
+                
+                // Update user's mute status in storage
+                const users = getConnectedUsers();
+                const userIndex = users.findIndex(u => u.id === localUserData.id);
+                if (userIndex !== -1) {
+                    users[userIndex].muted = localUserData.muted;
+                    saveConnectedUsers(users);
+                }
+                
+                document.getElementById('toggleMute').textContent = 
+                    localUserData.muted ? 'Unmute' : 'Mute';
+                updateParticipantList();
+            }
+        }
+
+        function updateParticipantList() {
+            const list = document.getElementById('participantList');
+            const users = getConnectedUsers();
+            
+            list.innerHTML = '';
+            users.forEach(user => {
+                const div = document.createElement('div');
+                div.className = 'participant';
+                
+                const isLocal = user.id === localUserData.id;
+                const status = user.muted ? 'muted' : 'active';
+                
+                div.innerHTML = `
+                    <span>
+                        <span class="status ${status}"></span>
+                        ${user.name} ${isLocal ? '(You)' : ''}
+                    </span>
+                    <span>${user.muted ? '(Muted)' : ''}</span>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function setupConnectionHandlers() {
+            // Handle page unload to remove user
+            window.addEventListener('beforeunload', () => {
+                const users = getConnectedUsers();
+                const filteredUsers = users.filter(u => u.id !== localUserData.id);
+                saveConnectedUsers(filteredUsers);
+            });
+
+            // Periodically check for inactive users (simulate server cleanup)
+            setInterval(() => {
+                const users = getConnectedUsers();
+                const activeUsers = users.filter(u => {
+                    // Remove users with no recent activity (simulate timeout)
+                    const isActive = u.id === localUserData.id || 
+                                   Date.now() - parseInt(u.id.split('_')[1]) < 60000;
+                    return isActive;
+                });
+                saveConnectedUsers(activeUsers);
+                updateParticipantList();
+            }, 5000);
+        }
+
+        // Check for existing session on page load
+        if (checkExistingSession()) {
+            joinChat();
+        }
+    </script>
+</body>
+</html>
