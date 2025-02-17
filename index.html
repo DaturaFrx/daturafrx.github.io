@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Awesome Stuff</title>
+  <title>Awesome Stuff - Blog Only</title>
   <link rel="stylesheet" href="css/style.css" />
   <!-- Marked.js for Markdown conversion -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
-    /* Basic styling for tabs and content */
+    /* Basic styling for the blog tab and content */
     .tabs {
       display: flex;
       gap: 1rem;
@@ -45,130 +45,33 @@
   </style>
 </head>
 <body>
-  <!-- Navigation Tabs -->
+  <!-- Navigation (only Blog tab is needed) -->
   <nav class="tabs">
-    <button id="blogTabButton" class="tab-button">Blog</button>
-    <button id="filesTabButton" class="tab-button">Files</button>
+    <button id="blogTabButton" class="tab-button active">Blog</button>
   </nav>
 
   <!-- Blog Tab Content -->
-  <div id="blogTab" class="tab-content" style="display: none;">
+  <div id="blogTab" class="tab-content">
     <h1>Blog</h1>
     <!-- Refresh button for blog posts -->
     <button id="refreshBlogBtn" class="refresh-btn">Refresh Blog</button>
     <div id="blogContainer"></div>
   </div>
 
-  <!-- Files Tab Content -->
-  <div id="filesTab" class="tab-content">
-    <h1>Mah Files</h1>
-    <!-- Refresh button for files -->
-    <button id="refreshFilesBtn" class="refresh-btn">Refresh Files</button>
-    <!-- Sections for various file types -->
-    <div class="section" id="imagesSection">
-      <h2>Images</h2>
-      <div id="imagesContainer"></div>
-    </div>
-    <div class="section" id="textSection">
-      <h2>Text Files</h2>
-      <div id="textContainer"></div>
-    </div>
-    <div class="section" id="videosSection">
-      <h2>Videos</h2>
-      <div id="videosContainer"></div>
-    </div>
-    <div class="section" id="audioSection">
-      <h2>Audio Files</h2>
-      <div id="audioContainer"></div>
-    </div>
-    <div class="section" id="pdfSection">
-      <h2>PDFs</h2>
-      <div id="pdfContainer"></div>
-    </div>
-    <div class="section" id="otherSection">
-      <h2>Other Files</h2>
-      <div id="otherContainer"></div>
-    </div>
-  </div>
-
   <script>
-    // Configuration: GitHub repository details and API URLs.
+    // Configuration: GitHub repository details and API URL for blog posts.
     const repoOwner = 'DaturaFrx';
     const repoName = 'daturafrx.github.io';
     // Blog posts are stored in the "docs" directory.
     const blogApiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/docs`;
-    // Files are stored in the "awesomeStuff" directory.
-    const filesApiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/awesomeStuff`;
 
     // Function to append a timestamp to URLs for cache busting.
     function bustCache(url) {
       return url + "?t=" + new Date().getTime();
     }
 
-    // Tab elements.
-    const blogTabButton = document.getElementById('blogTabButton');
-    const filesTabButton = document.getElementById('filesTabButton');
-    const blogTab = document.getElementById('blogTab');
-    const filesTab = document.getElementById('filesTab');
-
-    // Refresh button elements.
+    // Refresh button element for the blog.
     const refreshBlogBtn = document.getElementById('refreshBlogBtn');
-    const refreshFilesBtn = document.getElementById('refreshFilesBtn');
-
-    // Switch active tab and load content if necessary.
-    function setActiveTab(tab) {
-      if (tab === 'blog') {
-        blogTab.style.display = 'block';
-        filesTab.style.display = 'none';
-        blogTabButton.classList.add('active');
-        filesTabButton.classList.remove('active');
-        // Only load blog posts if the container is empty.
-        if (document.getElementById('blogContainer').innerHTML.trim() === "") {
-          loadBlogPosts();
-        }
-      } else {
-        blogTab.style.display = 'none';
-        filesTab.style.display = 'block';
-        filesTabButton.classList.add('active');
-        blogTabButton.classList.remove('active');
-        // Only load files if containers are empty.
-        if (
-          document.getElementById('imagesContainer').innerHTML.trim() === "" &&
-          document.getElementById('textContainer').innerHTML.trim() === "" &&
-          document.getElementById('videosContainer').innerHTML.trim() === "" &&
-          document.getElementById('audioContainer').innerHTML.trim() === "" &&
-          document.getElementById('pdfContainer').innerHTML.trim() === "" &&
-          document.getElementById('otherContainer').innerHTML.trim() === ""
-        ) {
-          loadFiles();
-        }
-      }
-    }
-
-    // Event listeners for tab buttons.
-    blogTabButton.addEventListener('click', () => setActiveTab('blog'));
-    filesTabButton.addEventListener('click', () => setActiveTab('files'));
-
-    // Refresh button event listener for Blog.
-    refreshBlogBtn.addEventListener('click', () => {
-      document.getElementById('blogContainer').innerHTML = "";
-      loadBlogPosts();
-    });
-
-    // Refresh button event listener for Files.
-    refreshFilesBtn.addEventListener('click', () => {
-      document.getElementById('imagesContainer').innerHTML = "";
-      document.getElementById('textContainer').innerHTML = "";
-      document.getElementById('videosContainer').innerHTML = "";
-      document.getElementById('audioContainer').innerHTML = "";
-      document.getElementById('pdfContainer').innerHTML = "";
-      document.getElementById('otherContainer').innerHTML = "";
-      // Make all sections visible in case they were hidden.
-      document.querySelectorAll('.section').forEach(section => {
-        section.style.display = 'block';
-      });
-      loadFiles();
-    });
 
     // Load blog posts from the docs directory.
     function loadBlogPosts() {
@@ -185,7 +88,7 @@
               const promise = fetch(bustCache(file.download_url))
                 .then(response => response.text())
                 .then(text => {
-                  // Regex to match: date$$ddmmyyyy or date$$ddmmyyyy-X (X is the order number)
+                  // Regex to match: date$$ddmmyyyy or date$$ddmmyyyy-X (where X is the order number)
                   let regex = /date\$\$(\d{2})(\d{2})(\d{4})(?:-(\d+))?/i;
                   let match = text.match(regex);
                   let postDate = null;
@@ -193,8 +96,8 @@
                   if (match) {
                     // Extract day, month, year, and order number (if present)
                     const dd = match[1],
-                      mm = match[2],
-                      yyyy = match[3];
+                          mm = match[2],
+                          yyyy = match[3];
                     orderNumber = match[4] ? parseInt(match[4], 10) : 0;
                     // Construct a date object (format: yyyy-mm-dd)
                     postDate = new Date(`${yyyy}-${mm}-${dd}`);
@@ -265,95 +168,15 @@
         });
     }
 
-    // Define accepted file type extensions for the Files tab.
-    const imageTypes = ["jpg", "jpeg", "png", "gif", "webp"];
-    const textTypes = ["txt", "md"];
-    const videoTypes = ["mp4", "webm", "ogv"];
-    const audioTypes = ["mp3", "wav", "flac"];
-    const pdfTypes = ["pdf"];
+    // Refresh button event listener for the blog.
+    refreshBlogBtn.addEventListener('click', () => {
+      document.getElementById('blogContainer').innerHTML = "";
+      loadBlogPosts();
+    });
 
-    // Create a file card element to display each file.
-    function createFileCard(file, previewElement) {
-      const card = document.createElement("div");
-      card.classList.add("file-card");
-      // File title.
-      const title = document.createElement("div");
-      title.classList.add("file-title");
-      title.innerText = file.name;
-      card.appendChild(title);
-      // Append preview element if available.
-      if (previewElement) {
-        card.appendChild(previewElement);
-      }
-      // Create container for view and download links.
-      const linksDiv = document.createElement("div");
-      linksDiv.classList.add("file-links");
-      const viewLink = document.createElement("a");
-      viewLink.href = bustCache(file.download_url);
-      viewLink.target = "_blank";
-      viewLink.innerText = "View";
-      linksDiv.appendChild(viewLink);
-      const downloadLink = document.createElement("a");
-      downloadLink.href = bustCache(file.download_url);
-      downloadLink.download = file.name;
-      downloadLink.innerText = "Download";
-      linksDiv.appendChild(downloadLink);
-      card.appendChild(linksDiv);
-      return card;
-    }
-
-    // Load files from the awesomeStuff directory.
-    function loadFiles() {
-      fetch(bustCache(filesApiUrl))
-        .then(response => response.json())
-        .then(data => {
-          data.forEach(file => {
-            const fileName = file.name;
-            const extension = fileName.split(".").pop().toLowerCase();
-            let previewElement = null;
-            let containerId = "";
-            // Determine file type and assign to the appropriate container.
-            if (imageTypes.includes(extension)) {
-              previewElement = document.createElement("img");
-              previewElement.src = bustCache(file.download_url);
-              previewElement.alt = fileName;
-              containerId = "imagesContainer";
-            } else if (videoTypes.includes(extension)) {
-              previewElement = document.createElement("video");
-              previewElement.src = bustCache(file.download_url);
-              previewElement.controls = true;
-              previewElement.width = 300;
-              containerId = "videosContainer";
-            } else if (audioTypes.includes(extension)) {
-              previewElement = document.createElement("audio");
-              previewElement.src = bustCache(file.download_url);
-              previewElement.controls = true;
-              containerId = "audioContainer";
-            } else if (pdfTypes.includes(extension)) {
-              containerId = "pdfContainer";
-            } else if (textTypes.includes(extension)) {
-              containerId = "textContainer";
-            } else {
-              containerId = "otherContainer";
-            }
-            const fileCard = createFileCard(file, previewElement);
-            document.getElementById(containerId).appendChild(fileCard);
-          });
-          // Hide any empty sections.
-          document.querySelectorAll(".section").forEach(section => {
-            if (!section.querySelector(".file-card")) {
-              section.style.display = "none";
-            }
-          });
-        })
-        .catch(error => {
-          console.error("Error loading files:", error);
-        });
-    }
-
-    // Initialize default tab on page load.
+    // Load blog posts on initial page load.
     window.addEventListener("load", () => {
-      setActiveTab("blog");
+      loadBlogPosts();
     });
   </script>
 </body>
