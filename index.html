@@ -3,181 +3,135 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Awesome Stuff - Blog Only</title>
-  <link rel="stylesheet" href="css/style.css" />
-  <!-- Marked.js for Markdown conversion -->
+  <title>Blog</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
-    /* Basic styling for the blog tab and content */
-    .tabs {
-      display: flex;
-      gap: 1rem;
-      padding: 1rem;
-      background: #f0f0f0;
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #fefefe;
+      color: #333;
     }
-    .tab-button {
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      border: none;
-      background: #ddd;
-    }
-    .tab-button.active {
-      background: #bbb;
-      font-weight: bold;
-    }
-    .tab-content {
-      padding: 1rem;
-    }
-    .blog-post {
-      margin-bottom: 2rem;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 1rem;
-    }
-    .post-date {
-      color: #888;
-      font-size: 0.9em;
+    h1 {
+      text-align: center;
     }
     .refresh-btn {
-      margin: 0.5rem 0;
-      padding: 0.4rem 0.8rem;
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      background: #007BFF;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
       cursor: pointer;
+    }
+    .blog-post {
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 10px;
+    }
+    .blog-post h2 {
+      margin-top: 0;
+    }
+    .post-date {
+      font-size: 0.9em;
+      color: #666;
     }
   </style>
 </head>
 <body>
-  <!-- Navigation (only Blog tab is needed) -->
-  <nav class="tabs">
-    <button id="blogTabButton" class="tab-button active">Blog</button>
-  </nav>
-
-  <!-- Blog Tab Content -->
-  <div id="blogTab" class="tab-content">
-    <h1>Blog</h1>
-    <!-- Refresh button for blog posts -->
-    <button id="refreshBlogBtn" class="refresh-btn">Refresh Blog</button>
-    <div id="blogContainer"></div>
-  </div>
+  <h1>Blog</h1>
+  <button id="refreshBlogBtn" class="refresh-btn">Refresh Blog</button>
+  <div id="blogContainer"></div>
 
   <script>
-    // Configuration: GitHub repository details and API URL for blog posts.
-    const repoOwner = 'DaturaFrx';
-    const repoName = 'daturafrx.github.io';
-    // Blog posts are stored in the "docs" directory.
-    const blogApiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/docs`;
+  const repoOwner = 'DaturaFrx';
+  const repoName = 'daturafrx.github.io';
+  const blogApiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/docs`;
 
-    // Function to append a timestamp to URLs for cache busting.
-    function bustCache(url) {
-      return url + "?t=" + new Date().getTime();
-    }
+  function bustCache(url) {
+    return url + '?t=' + new Date().getTime();
+  }
 
-    // Refresh button element for the blog.
-    const refreshBlogBtn = document.getElementById('refreshBlogBtn');
+  function loadBlogPosts() {
+    fetch(bustCache(blogApiUrl))
+      .then(response => response.json())
+      .then(files => {
+        const postPromises = files
+          .filter(file => file.name.endsWith('.md') || file.name.endsWith('.txt'))
+          .map(file =>
+            fetch(bustCache(file.download_url))
+              .then(response => response.text())
+              .then(text => {
+                let regex = /date\$\$(\d{2})(\d{2})(\d{4})(?:-(\d+))?/i;
+                let match = text.match(regex);
+                let postDate = new Date(0);
+                let orderNumber = 0;
+                let dateKey = '00000000';
 
-    // Load blog posts from the docs directory.
-    function loadBlogPosts() {
-      fetch(bustCache(blogApiUrl))
-        .then(response => response.json())
-        .then(files => {
-          // Array to store promises for each blog post.
-          const postPromises = [];
-          files.forEach(file => {
-            const extension = file.name.split('.').pop().toLowerCase();
-            // Only process Markdown (.md) and text (.txt) files.
-            if (extension === 'md' || extension === 'txt') {
-              // Fetch each file with cache busting.
-              const promise = fetch(bustCache(file.download_url))
-                .then(response => response.text())
-                .then(text => {
-                  // Regex to match: date$$ddmmyyyy or date$$ddmmyyyy-X (where X is the order number)
-                  let regex = /date\$\$(\d{2})(\d{2})(\d{4})(?:-(\d+))?/i;
-                  let match = text.match(regex);
-                  let postDate = null;
-                  let orderNumber = 0;
-                  if (match) {
-                    // Extract day, month, year, and order number (if present)
-                    const dd = match[1],
-                          mm = match[2],
-                          yyyy = match[3];
-                    orderNumber = match[4] ? parseInt(match[4], 10) : 0;
-                    // Construct a date object (format: yyyy-mm-dd)
-                    postDate = new Date(`${yyyy}-${mm}-${dd}`);
-                    // Remove the date string from the post content.
-                    text = text.replace(match[0], '').trim();
-                  } else {
-                    // If no date is found, assign a default old date.
-                    postDate = new Date(0);
-                  }
-                  return {
-                    fileName: file.name,
-                    extension: extension,
-                    content: text,
-                    postDate: postDate,
-                    orderNumber: orderNumber
-                  };
-                });
-              postPromises.push(promise);
-            }
-          });
-          return Promise.all(postPromises);
-        })
-        .then(posts => {
-          // Sort posts: first by date descending (newest first), then by order number ascending.
-          posts.sort((a, b) => {
-            if (b.postDate - a.postDate !== 0) {
-              return b.postDate - a.postDate;
-            } else {
-              return a.orderNumber - b.orderNumber;
-            }
-          });
-          // Clear the blog container.
-          const blogContainer = document.getElementById('blogContainer');
-          blogContainer.innerHTML = "";
-          // Append each sorted post.
-          posts.forEach(post => {
-            const blogPost = document.createElement('div');
-            blogPost.classList.add('blog-post');
-            // Create and append title (filename without extension).
-            const title = document.createElement('h2');
-            title.innerText = post.fileName.replace(/\.[^/.]+$/, "");
-            blogPost.appendChild(title);
-            // Display the date if available.
-            if (post.postDate.getTime() !== 0) {
-              // Format date as dd/mm/yyyy.
-              const dd = String(post.postDate.getDate()).padStart(2, '0');
-              const mm = String(post.postDate.getMonth() + 1).padStart(2, '0');
-              const yyyy = post.postDate.getFullYear();
-              const dateElem = document.createElement('p');
-              dateElem.classList.add('post-date');
-              dateElem.innerText = `Posted on: ${dd}/${mm}/${yyyy} - Order: ${post.orderNumber}`;
-              blogPost.appendChild(dateElem);
-            }
-            // Create the content container and convert Markdown if needed.
-            const contentDiv = document.createElement('div');
-            if (post.extension === 'md') {
-              contentDiv.innerHTML = marked(post.content);
-            } else {
-              contentDiv.innerText = post.content;
-            }
-            blogPost.appendChild(contentDiv);
-            blogContainer.appendChild(blogPost);
-          });
-        })
-        .catch(error => {
-          console.error("Error loading blog posts:", error);
-          document.getElementById("blogContainer").innerText = "Error loading blog posts.";
+                if (match) {
+                  const [_, dd, mm, yyyy, order] = match;
+                  orderNumber = order ? parseInt(order, 10) : 0;
+                  postDate = new Date(`${yyyy}-${mm}-${dd}`);
+                  dateKey = `${yyyy}${mm}${dd}`;
+                  text = text.replace(match[0], '').trim();
+                }
+
+                return { fileName: file.name, ext: file.name.split('.').pop().toLowerCase(), content: text, postDate, orderNumber, dateKey };
+              })
+          );
+
+        return Promise.all(postPromises);
+      })
+      .then(posts => {
+        // Count total posts per date
+        const postCountByDate = posts.reduce((acc, post) => {
+          if (!acc[post.dateKey]) acc[post.dateKey] = 0;
+          acc[post.dateKey]++;
+          return acc;
+        }, {});
+
+        // Sort posts: Newest date first, then by order number
+        posts.sort((a, b) => (b.postDate - a.postDate) || (a.orderNumber - b.orderNumber));
+
+        const container = document.getElementById('blogContainer');
+        container.innerHTML = "";
+        posts.forEach(post => {
+          const postDiv = document.createElement('div');
+          postDiv.className = 'blog-post';
+
+          const title = document.createElement('h2');
+          title.textContent = post.fileName.replace(/\.[^/.]+$/, "");
+          postDiv.appendChild(title);
+
+          if (post.postDate.getTime() !== 0) {
+            const dateElem = document.createElement('p');
+            dateElem.className = 'post-date';
+            dateElem.textContent = `Posted on: ${post.postDate.toLocaleDateString()} - Order: ${post.orderNumber + 1}/${postCountByDate[post.dateKey]}`;
+            postDiv.appendChild(dateElem);
+          }
+
+          const contentDiv = document.createElement('div');
+          contentDiv.innerHTML = post.ext === 'md' ? marked.parse(post.content) : post.content.replace(/\n/g, '<br>');
+          postDiv.appendChild(contentDiv);
+
+          container.appendChild(postDiv);
         });
-    }
+      })
+      .catch(error => {
+        console.error("Error loading blog posts:", error);
+        document.getElementById('blogContainer').textContent = "Error loading blog posts.";
+      });
+  }
 
-    // Refresh button event listener for the blog.
-    refreshBlogBtn.addEventListener('click', () => {
-      document.getElementById('blogContainer').innerHTML = "";
-      loadBlogPosts();
-    });
+  document.getElementById('refreshBlogBtn').addEventListener('click', () => {
+    document.getElementById('blogContainer').innerHTML = "";
+    loadBlogPosts();
+  });
 
-    // Load blog posts on initial page load.
-    window.addEventListener("load", () => {
-      loadBlogPosts();
-    });
-  </script>
+  window.addEventListener("load", loadBlogPosts);
+</script>
 </body>
 </html>
