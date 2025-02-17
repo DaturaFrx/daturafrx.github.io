@@ -1,4 +1,4 @@
-date$$16022025-2$$
+date$$16022025-3$$
 big$$Marked as "Notes" in telehack. Also, it didnt recognize ' as a normal caracter so it uses the weird Portuguese C with the tail$$
 
 Between PLATO and the Social Media Revolution
