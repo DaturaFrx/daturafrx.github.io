@@ -1,145 +1,360 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Awesome Stuff</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Marked.js for Markdown conversion -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* Basic styling for tabs and content */
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      padding: 1rem;
+      background: #f0f0f0;
+    }
+    .tab-button {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      border: none;
+      background: #ddd;
+    }
+    .tab-button.active {
+      background: #bbb;
+      font-weight: bold;
+    }
+    .tab-content {
+      padding: 1rem;
+    }
+    .blog-post {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 1rem;
+    }
+    .post-date {
+      color: #888;
+      font-size: 0.9em;
+    }
+    .refresh-btn {
+      margin: 0.5rem 0;
+      padding: 0.4rem 0.8rem;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-  <h1>Mah Files</h1>
+  <!-- Navigation Tabs -->
+  <nav class="tabs">
+    <button id="blogTabButton" class="tab-button">Blog</button>
+    <button id="filesTabButton" class="tab-button">Files</button>
+  </nav>
 
-  <!-- Section for Images -->
-  <div class="section" id="imagesSection">
-    <h2>Images</h2>
-    <div id="imagesContainer"></div>
+  <!-- Blog Tab Content -->
+  <div id="blogTab" class="tab-content" style="display: none;">
+    <h1>Blog</h1>
+    <!-- Refresh button for blog posts -->
+    <button id="refreshBlogBtn" class="refresh-btn">Refresh Blog</button>
+    <div id="blogContainer"></div>
   </div>
 
-  <!-- Section for Text Files -->
-  <div class="section" id="textSection">
-    <h2>Text Files</h2>
-    <div id="textContainer"></div>
-  </div>
-
-  <!-- Section for Videos -->
-  <div class="section" id="videosSection">
-    <h2>Videos</h2>
-    <div id="videosContainer"></div>
-  </div>
-
-  <!-- Section for Audio Files -->
-  <div class="section" id="audioSection">
-    <h2>Audio Files</h2>
-    <div id="audioContainer"></div>
-  </div>
-
-  <!-- Section for PDFs -->
-  <div class="section" id="pdfSection">
-    <h2>PDFs</h2>
-    <div id="pdfContainer"></div>
-  </div>
-
-  <!-- Section for Other Files -->
-  <div class="section" id="otherSection">
-    <h2>Other Files</h2>
-    <div id="otherContainer"></div>
+  <!-- Files Tab Content -->
+  <div id="filesTab" class="tab-content">
+    <h1>Mah Files</h1>
+    <!-- Refresh button for files -->
+    <button id="refreshFilesBtn" class="refresh-btn">Refresh Files</button>
+    <!-- Sections for various file types -->
+    <div class="section" id="imagesSection">
+      <h2>Images</h2>
+      <div id="imagesContainer"></div>
+    </div>
+    <div class="section" id="textSection">
+      <h2>Text Files</h2>
+      <div id="textContainer"></div>
+    </div>
+    <div class="section" id="videosSection">
+      <h2>Videos</h2>
+      <div id="videosContainer"></div>
+    </div>
+    <div class="section" id="audioSection">
+      <h2>Audio Files</h2>
+      <div id="audioContainer"></div>
+    </div>
+    <div class="section" id="pdfSection">
+      <h2>PDFs</h2>
+      <div id="pdfContainer"></div>
+    </div>
+    <div class="section" id="otherSection">
+      <h2>Other Files</h2>
+      <div id="otherContainer"></div>
+    </div>
   </div>
 
   <script>
-    // Update these with your GitHub username and repository name
+    // Configuration: GitHub repository details and API URLs.
     const repoOwner = 'DaturaFrx';
-    const repoName  = 'daturafrx.github.io';
-    const directoryPath = 'awesomeStuff';
-    const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${directoryPath}`;
+    const repoName = 'daturafrx.github.io';
+    // Blog posts are stored in the "docs" directory.
+    const blogApiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/docs`;
+    // Files are stored in the "awesomeStuff" directory.
+    const filesApiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/awesomeStuff`;
 
-    // Define file type groups
-    const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    const textTypes  = ['txt', 'md'];
-    const videoTypes = ['mp4', 'webm', 'ogv'];
-    const audioTypes = ['mp3', 'wav', 'flac'];
-    const pdfTypes   = ['pdf'];
+    // Function to append a timestamp to URLs for cache busting.
+    function bustCache(url) {
+      return url + "?t=" + new Date().getTime();
+    }
 
-    // Create a card for each file with preview (if applicable) and links.
+    // Tab elements.
+    const blogTabButton = document.getElementById('blogTabButton');
+    const filesTabButton = document.getElementById('filesTabButton');
+    const blogTab = document.getElementById('blogTab');
+    const filesTab = document.getElementById('filesTab');
+
+    // Refresh button elements.
+    const refreshBlogBtn = document.getElementById('refreshBlogBtn');
+    const refreshFilesBtn = document.getElementById('refreshFilesBtn');
+
+    // Switch active tab and load content if necessary.
+    function setActiveTab(tab) {
+      if (tab === 'blog') {
+        blogTab.style.display = 'block';
+        filesTab.style.display = 'none';
+        blogTabButton.classList.add('active');
+        filesTabButton.classList.remove('active');
+        // Only load blog posts if the container is empty.
+        if (document.getElementById('blogContainer').innerHTML.trim() === "") {
+          loadBlogPosts();
+        }
+      } else {
+        blogTab.style.display = 'none';
+        filesTab.style.display = 'block';
+        filesTabButton.classList.add('active');
+        blogTabButton.classList.remove('active');
+        // Only load files if containers are empty.
+        if (
+          document.getElementById('imagesContainer').innerHTML.trim() === "" &&
+          document.getElementById('textContainer').innerHTML.trim() === "" &&
+          document.getElementById('videosContainer').innerHTML.trim() === "" &&
+          document.getElementById('audioContainer').innerHTML.trim() === "" &&
+          document.getElementById('pdfContainer').innerHTML.trim() === "" &&
+          document.getElementById('otherContainer').innerHTML.trim() === ""
+        ) {
+          loadFiles();
+        }
+      }
+    }
+
+    // Event listeners for tab buttons.
+    blogTabButton.addEventListener('click', () => setActiveTab('blog'));
+    filesTabButton.addEventListener('click', () => setActiveTab('files'));
+
+    // Refresh button event listener for Blog.
+    refreshBlogBtn.addEventListener('click', () => {
+      document.getElementById('blogContainer').innerHTML = "";
+      loadBlogPosts();
+    });
+
+    // Refresh button event listener for Files.
+    refreshFilesBtn.addEventListener('click', () => {
+      document.getElementById('imagesContainer').innerHTML = "";
+      document.getElementById('textContainer').innerHTML = "";
+      document.getElementById('videosContainer').innerHTML = "";
+      document.getElementById('audioContainer').innerHTML = "";
+      document.getElementById('pdfContainer').innerHTML = "";
+      document.getElementById('otherContainer').innerHTML = "";
+      // Make all sections visible in case they were hidden.
+      document.querySelectorAll('.section').forEach(section => {
+        section.style.display = 'block';
+      });
+      loadFiles();
+    });
+
+    // Load blog posts from the docs directory.
+    function loadBlogPosts() {
+      fetch(bustCache(blogApiUrl))
+        .then(response => response.json())
+        .then(files => {
+          // Array to store promises for each blog post.
+          const postPromises = [];
+          files.forEach(file => {
+            const extension = file.name.split('.').pop().toLowerCase();
+            // Only process Markdown (.md) and text (.txt) files.
+            if (extension === 'md' || extension === 'txt') {
+              // Fetch each file with cache busting.
+              const promise = fetch(bustCache(file.download_url))
+                .then(response => response.text())
+                .then(text => {
+                  // Regex to match: date$$ddmmyyyy or date$$ddmmyyyy-X (X is the order number)
+                  let regex = /date\$\$(\d{2})(\d{2})(\d{4})(?:-(\d+))?/i;
+                  let match = text.match(regex);
+                  let postDate = null;
+                  let orderNumber = 0;
+                  if (match) {
+                    // Extract day, month, year, and order number (if present)
+                    const dd = match[1],
+                      mm = match[2],
+                      yyyy = match[3];
+                    orderNumber = match[4] ? parseInt(match[4], 10) : 0;
+                    // Construct a date object (format: yyyy-mm-dd)
+                    postDate = new Date(`${yyyy}-${mm}-${dd}`);
+                    // Remove the date string from the post content.
+                    text = text.replace(match[0], '').trim();
+                  } else {
+                    // If no date is found, assign a default old date.
+                    postDate = new Date(0);
+                  }
+                  return {
+                    fileName: file.name,
+                    extension: extension,
+                    content: text,
+                    postDate: postDate,
+                    orderNumber: orderNumber
+                  };
+                });
+              postPromises.push(promise);
+            }
+          });
+          return Promise.all(postPromises);
+        })
+        .then(posts => {
+          // Sort posts: first by date descending (newest first), then by order number ascending.
+          posts.sort((a, b) => {
+            if (b.postDate - a.postDate !== 0) {
+              return b.postDate - a.postDate;
+            } else {
+              return a.orderNumber - b.orderNumber;
+            }
+          });
+          // Clear the blog container.
+          const blogContainer = document.getElementById('blogContainer');
+          blogContainer.innerHTML = "";
+          // Append each sorted post.
+          posts.forEach(post => {
+            const blogPost = document.createElement('div');
+            blogPost.classList.add('blog-post');
+            // Create and append title (filename without extension).
+            const title = document.createElement('h2');
+            title.innerText = post.fileName.replace(/\.[^/.]+$/, "");
+            blogPost.appendChild(title);
+            // Display the date if available.
+            if (post.postDate.getTime() !== 0) {
+              // Format date as dd/mm/yyyy.
+              const dd = String(post.postDate.getDate()).padStart(2, '0');
+              const mm = String(post.postDate.getMonth() + 1).padStart(2, '0');
+              const yyyy = post.postDate.getFullYear();
+              const dateElem = document.createElement('p');
+              dateElem.classList.add('post-date');
+              dateElem.innerText = `Posted on: ${dd}/${mm}/${yyyy} - Order: ${post.orderNumber}`;
+              blogPost.appendChild(dateElem);
+            }
+            // Create the content container and convert Markdown if needed.
+            const contentDiv = document.createElement('div');
+            if (post.extension === 'md') {
+              contentDiv.innerHTML = marked(post.content);
+            } else {
+              contentDiv.innerText = post.content;
+            }
+            blogPost.appendChild(contentDiv);
+            blogContainer.appendChild(blogPost);
+          });
+        })
+        .catch(error => {
+          console.error("Error loading blog posts:", error);
+          document.getElementById("blogContainer").innerText = "Error loading blog posts.";
+        });
+    }
+
+    // Define accepted file type extensions for the Files tab.
+    const imageTypes = ["jpg", "jpeg", "png", "gif", "webp"];
+    const textTypes = ["txt", "md"];
+    const videoTypes = ["mp4", "webm", "ogv"];
+    const audioTypes = ["mp3", "wav", "flac"];
+    const pdfTypes = ["pdf"];
+
+    // Create a file card element to display each file.
     function createFileCard(file, previewElement) {
-      const card = document.createElement('div');
-      card.classList.add('file-card');
-
-      const title = document.createElement('div');
-      title.classList.add('file-title');
+      const card = document.createElement("div");
+      card.classList.add("file-card");
+      // File title.
+      const title = document.createElement("div");
+      title.classList.add("file-title");
       title.innerText = file.name;
       card.appendChild(title);
-
+      // Append preview element if available.
       if (previewElement) {
         card.appendChild(previewElement);
       }
-
-      const linksDiv = document.createElement('div');
-      linksDiv.classList.add('file-links');
-
-      const viewLink = document.createElement('a');
-      viewLink.href = file.download_url;
-      viewLink.target = '_blank';
-      viewLink.innerText = 'View';
+      // Create container for view and download links.
+      const linksDiv = document.createElement("div");
+      linksDiv.classList.add("file-links");
+      const viewLink = document.createElement("a");
+      viewLink.href = bustCache(file.download_url);
+      viewLink.target = "_blank";
+      viewLink.innerText = "View";
       linksDiv.appendChild(viewLink);
-
-      const downloadLink = document.createElement('a');
-      downloadLink.href = file.download_url;
+      const downloadLink = document.createElement("a");
+      downloadLink.href = bustCache(file.download_url);
       downloadLink.download = file.name;
-      downloadLink.innerText = 'Download';
+      downloadLink.innerText = "Download";
       linksDiv.appendChild(downloadLink);
-
       card.appendChild(linksDiv);
       return card;
     }
 
-    fetch(apiUrl)
-      .then(response => response.json())
-      .then(data => {
-        data.forEach(file => {
-          const fileName = file.name;
-          const extension = fileName.split('.').pop().toLowerCase();
-          let previewElement = null;
-          let containerId = '';
-
-          if (imageTypes.includes(extension)) {
-            previewElement = document.createElement('img');
-            previewElement.src = file.download_url;
-            previewElement.alt = fileName;
-            containerId = 'imagesContainer';
-          } else if (videoTypes.includes(extension)) {
-            previewElement = document.createElement('video');
-            previewElement.src = file.download_url;
-            previewElement.controls = true;
-            previewElement.width = 300;
-            containerId = 'videosContainer';
-          } else if (audioTypes.includes(extension)) {
-            previewElement = document.createElement('audio');
-            previewElement.src = file.download_url;
-            previewElement.controls = true;
-            containerId = 'audioContainer';
-          } else if (pdfTypes.includes(extension)) {
-            // For PDFs, simply show the card with View/Download links.
-            containerId = 'pdfContainer';
-          } else if (textTypes.includes(extension)) {
-            containerId = 'textContainer';
-          } else {
-            containerId = 'otherContainer';
-          }
-
-          const fileCard = createFileCard(file, previewElement);
-          document.getElementById(containerId).appendChild(fileCard);
+    // Load files from the awesomeStuff directory.
+    function loadFiles() {
+      fetch(bustCache(filesApiUrl))
+        .then(response => response.json())
+        .then(data => {
+          data.forEach(file => {
+            const fileName = file.name;
+            const extension = fileName.split(".").pop().toLowerCase();
+            let previewElement = null;
+            let containerId = "";
+            // Determine file type and assign to the appropriate container.
+            if (imageTypes.includes(extension)) {
+              previewElement = document.createElement("img");
+              previewElement.src = bustCache(file.download_url);
+              previewElement.alt = fileName;
+              containerId = "imagesContainer";
+            } else if (videoTypes.includes(extension)) {
+              previewElement = document.createElement("video");
+              previewElement.src = bustCache(file.download_url);
+              previewElement.controls = true;
+              previewElement.width = 300;
+              containerId = "videosContainer";
+            } else if (audioTypes.includes(extension)) {
+              previewElement = document.createElement("audio");
+              previewElement.src = bustCache(file.download_url);
+              previewElement.controls = true;
+              containerId = "audioContainer";
+            } else if (pdfTypes.includes(extension)) {
+              containerId = "pdfContainer";
+            } else if (textTypes.includes(extension)) {
+              containerId = "textContainer";
+            } else {
+              containerId = "otherContainer";
+            }
+            const fileCard = createFileCard(file, previewElement);
+            document.getElementById(containerId).appendChild(fileCard);
+          });
+          // Hide any empty sections.
+          document.querySelectorAll(".section").forEach(section => {
+            if (!section.querySelector(".file-card")) {
+              section.style.display = "none";
+            }
+          });
+        })
+        .catch(error => {
+          console.error("Error loading files:", error);
         });
+    }
 
-        // Hide sections that have no files.
-        document.querySelectorAll('.section').forEach(section => {
-          if (!section.querySelector('.file-card')) {
-            section.style.display = 'none';
-          }
-        });
-      })
-      .catch(error => {
-        console.error('Error fetching files:', error);
-      });
+    // Initialize default tab on page load.
+    window.addEventListener("load", () => {
+      setActiveTab("blog");
+    });
   </script>
 </body>
 </html>
