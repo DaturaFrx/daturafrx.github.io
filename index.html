@@ -13,8 +13,6 @@
       background: #fefefe;
       color: #333;
     }
-    h1 {
-    }
     .refresh-btn {
       margin: 20px auto;
       padding: 10px 20px;
@@ -29,19 +27,31 @@
       border-bottom: 1px solid #ccc;
       padding-bottom: 10px;
     }
-    .blog-post h2 {
-      margin-top: 0;
-    }
-    .post-date {
+    .post-date, .post-description {
       font-size: 0.9em;
       color: #666;
+    }
+    .article-content img {
+      display: block;
+      margin: 0 auto;
+    }
+    .back-btn {
+      display: block;
+      margin: 20px 0;
+      padding: 10px 15px;
+      background: #28a745;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 4px;
+      text-align: center;
+      width: 100px;
     }
   </style>
 </head>
 <body>
   <h1>Super Sigma Stuff</h1>
   <button id="refreshBlogBtn" class="refresh-btn">Refresh Blog</button>
-  <hr></hr>
+  <hr />
   <div id="blogContainer"></div>
 
   <script>
@@ -53,7 +63,17 @@
     return url + '?t=' + new Date().getTime();
   }
 
-  function loadBlogPosts() {
+  function updateHistory(article) {
+    const url = new URL(window.location);
+    if (article) {
+      url.searchParams.set('article', article);
+    } else {
+      url.searchParams.delete('article');
+    }
+    window.history.pushState({article}, '', url);
+  }
+
+  function loadBlogPosts(articleToShow = null) {
     fetch(bustCache(blogApiUrl))
       .then(response => response.json())
       .then(files => {
@@ -63,39 +83,80 @@
             fetch(bustCache(file.download_url))
               .then(response => response.text())
               .then(text => {
-                let regex = /date\$\$(\d{2})(\d{2})(\d{4})(?:-(\d+))?/i;
-                let match = text.match(regex);
+                let dateMatch = text.match(/date\$\$(\d{2})(\d{2})(\d{4})(?:-(\d+))?\$\$/i);
+                let bigMatch = text.match(/big\$\$(.*?)\$\$/is);
                 let postDate = new Date(0);
                 let orderNumber = 0;
                 let dateKey = '00000000';
+                let isBig = !!bigMatch;
+                let description = "";
 
-                if (match) {
-                  const [_, dd, mm, yyyy, order] = match;
+                if (dateMatch) {
+                  const [_, dd, mm, yyyy, order] = dateMatch;
                   orderNumber = order ? parseInt(order, 10) : 0;
                   postDate = new Date(`${yyyy}-${mm}-${dd}`);
                   dateKey = `${yyyy}${mm}${dd}`;
-                  text = text.replace(match[0], '').trim();
+                  text = text.replace(dateMatch[0], '').trim();
+                }
+                if (isBig) {
+                  description = bigMatch[1] ? bigMatch[1].trim() : "";
+                  text = text.replace(bigMatch[0], '').trim();
                 }
 
-                return { fileName: file.name, ext: file.name.split('.').pop().toLowerCase(), content: text, postDate, orderNumber, dateKey };
+                return { fileName: file.name, ext: file.name.split('.').pop().toLowerCase(), content: text, postDate, orderNumber, dateKey, isBig, description };
               })
           );
 
         return Promise.all(postPromises);
       })
       .then(posts => {
-        // Count total posts per date
-        const postCountByDate = posts.reduce((acc, post) => {
-          if (!acc[post.dateKey]) acc[post.dateKey] = 0;
-          acc[post.dateKey]++;
-          return acc;
-        }, {});
-
-        // Sort posts: Newest date first, then by order number
-        posts.sort((a, b) => (b.postDate - a.postDate) || (a.orderNumber - b.orderNumber));
-
+        const article = articleToShow || new URLSearchParams(window.location.search).get('article');
         const container = document.getElementById('blogContainer');
         container.innerHTML = "";
+
+        if (article) {
+          const post = posts.find(p => p.fileName === article);
+          if (post) {
+            const postDiv = document.createElement('div');
+            postDiv.className = 'blog-post';
+
+            const title = document.createElement('h2');
+            title.textContent = post.fileName.replace(/\.[^/.]+$/, "");
+            postDiv.appendChild(title);
+
+            if (post.postDate.getTime() !== 0) {
+              const dateElem = document.createElement('p');
+              dateElem.className = 'post-date';
+              dateElem.textContent = `Posted on: ${post.postDate.toLocaleDateString()}`;
+              postDiv.appendChild(dateElem);
+            }
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'article-content';
+            contentDiv.innerHTML = post.ext === 'md' ? marked.parse(post.content) : post.content.replace(/\n/g, '<br>');
+            postDiv.appendChild(contentDiv);
+
+            const backBtn = document.createElement('a');
+            backBtn.href = "#";
+            backBtn.className = 'back-btn';
+            backBtn.textContent = "Back";
+            backBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              updateHistory(null);
+              loadBlogPosts(null);
+            });
+            postDiv.appendChild(backBtn);
+
+            container.appendChild(postDiv);
+            if (!articleToShow) {
+              updateHistory(article);
+            }
+            return;
+          }
+        }
+
+        posts.sort((a, b) => (b.postDate - a.postDate) || (a.orderNumber - b.orderNumber));
+        
         posts.forEach(post => {
           const postDiv = document.createElement('div');
           postDiv.className = 'blog-post';
@@ -107,29 +168,46 @@
           if (post.postDate.getTime() !== 0) {
             const dateElem = document.createElement('p');
             dateElem.className = 'post-date';
-            dateElem.textContent = `Posted on: ${post.postDate.toLocaleDateString()} - Order: ${post.orderNumber + 1}/${postCountByDate[post.dateKey]}`;
+            dateElem.textContent = `Posted on: ${post.postDate.toLocaleDateString()}`;
             postDiv.appendChild(dateElem);
           }
 
-          const contentDiv = document.createElement('div');
-          contentDiv.innerHTML = post.ext === 'md' ? marked.parse(post.content) : post.content.replace(/\n/g, '<br>');
-          postDiv.appendChild(contentDiv);
-
+          if (post.isBig) {
+            const descriptionElem = document.createElement('p');
+            descriptionElem.className = 'post-description';
+            descriptionElem.textContent = post.description;
+            postDiv.appendChild(descriptionElem);
+            
+            const readMoreLink = document.createElement('a');
+            readMoreLink.href = "#";
+            readMoreLink.textContent = "Read more";
+            readMoreLink.addEventListener('click', (e) => {
+              e.preventDefault();
+              updateHistory(post.fileName);
+              loadBlogPosts(post.fileName);
+            });
+            postDiv.appendChild(readMoreLink);
+          } else {
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'article-content';
+            contentDiv.innerHTML = post.ext === 'md' ? marked.parse(post.content) : post.content.replace(/\n/g, '<br>');
+            postDiv.appendChild(contentDiv);
+          }
           container.appendChild(postDiv);
         });
-      })
-      .catch(error => {
-        console.error("Error loading blog posts:", error);
-        document.getElementById('blogContainer').textContent = "Error loading blog posts.";
+
+        if (!articleToShow) {
+          updateHistory(null);
+        }
       });
   }
 
-  document.getElementById('refreshBlogBtn').addEventListener('click', () => {
-    document.getElementById('blogContainer').innerHTML = "";
-    loadBlogPosts();
+  window.addEventListener('popstate', (event) => {
+    loadBlogPosts(event.state?.article);
   });
 
-  window.addEventListener("load", loadBlogPosts);
+  document.getElementById('refreshBlogBtn').addEventListener('click', () => loadBlogPosts());
+  window.addEventListener("load", () => loadBlogPosts());
 </script>
 </body>
 </html>
