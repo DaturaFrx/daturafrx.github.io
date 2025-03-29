@@ -287,7 +287,7 @@
         /* Small mobile devices */
         @media (max-width: 576px) {
             .player {
-                width: 100%;
+                width: 75%;
                 margin-bottom: 0.75rem;
             }
 
@@ -313,10 +313,22 @@
             .mobile-buttons .btn {
                 width: 100%;
             }
+
+            #info-panel {
+                font-size: 10px;
+                order: -1;
+                margin-bottom: 0.5rem;
+                height: 20px;
+                width: 100%;
+            }
+
+            #game-log {
+                height: 60px;
+            }
         }
 
         /* Very small devices */
-        @media (max-width: 360px) {
+        @media (max-width: 320px) {
             .card {
                 width: 20px;
                 height: 45px;
@@ -324,6 +336,7 @@
             }
 
             #game-log {
+                background-color: var(--bg-darker);
                 height: 60px;
                 font-size: 0.5rem;
                 opacity: 50%;
