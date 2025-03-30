@@ -309,7 +309,9 @@
                 grid-column: span 3;
                 /* Each button takes 2 columns */
                 justify-self: center;
+                /* Center inside grid */
                 width: 100%;
+                /* Adjust width for better centering */
             }
         }
     </style>
@@ -347,7 +349,7 @@
         class BlackjackGame {
             constructor() {
                 // Debug configuration
-                this.debugMode = false;
+                this.debugMode = true;
                 this.debugPlayerCount = 3;
 
                 this.players = [];
@@ -614,17 +616,19 @@
                     case 't': // Split
                         if (currentPlayer.status === 'playing' &&
                             currentPlayer.hand.length === 2 &&
-                            currentPlayer.hand[0].rank === currentPlayer.hand[1].rank) {
+                            this.calculateHandTotal(currentPlayer.hand) === 20) {  // Total of 10 + 10
 
                             const splitHand = [currentPlayer.hand.pop()];
                             this.dealCard(currentPlayer.hand);
                             this.dealCard(splitHand);
+
                             const splitPlayer = {
                                 ...currentPlayer,
                                 hand: splitHand,
                                 name: `${currentPlayer.name} (Split)`,
                                 status: 'playing'
                             };
+
                             this.players.splice(this.currentPlayerIndex + 1, 0, splitPlayer);
                             this.renderPlayers();
                             this.log(`${currentPlayer.name} dividió su mano.`);
