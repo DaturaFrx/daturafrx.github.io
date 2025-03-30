@@ -307,6 +307,13 @@
                 <button id="btn-new-round" class="btn">Nueva Ronda</button>
                 <div id="info-panel">Usa teclas 1-N para cambiar jugador. H: Pedir, S: Plantarse, R: Rendirse, T:
                     Dividir, D: Doblar</div>
+                <div class="controls">
+                    <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 'h' })">Hit</button>
+                    <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 's' })">Stand</button>
+                    <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 'r' })">Surrender</button>
+                    <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 'd' })">Double</button>
+                    <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 't' })">Split</button>
+                </div>
                 <button id="btn-end-round" class="btn">Terminar Ronda</button>
             </div>
         </div>
@@ -525,7 +532,10 @@
 
             handleKeyPress(event) {
                 if (!this.gameActive) return;
-                const key = event.key.toLowerCase();
+
+                // Handle keyboard input
+                const key = event.key?.toLowerCase();
+                if (!key) return;
 
                 // Player selection by number key
                 if (!isNaN(key)) {
@@ -656,6 +666,31 @@
         // Initialize the game on page load
         const game = new BlackjackGame();
         game.startGame();
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const playersArea = document.getElementById("players-area");
+
+            // Add click listener on players-area
+            playersArea.addEventListener("click", function (event) {
+                // Only allow click-based selection if screen width is below 1200px
+                if (window.innerWidth >= 1200) return;
+
+                // Find the closest .player element from where the click occurred
+                const playerElement = event.target.closest('.player');
+                if (!playerElement) return;
+
+                // Get a list of all player elements in the players-area
+                const allPlayers = Array.from(playersArea.querySelectorAll('.player'));
+
+                // Determine the index of the clicked player element
+                const playerIndex = allPlayers.indexOf(playerElement);
+                if (playerIndex !== -1 && playerIndex < game.players.length) {
+                    game.currentPlayerIndex = playerIndex;
+                    game.renderPlayers();
+                    game.log(`Cambiando al jugador ${game.players[playerIndex].name}`);
+                }
+            });
+        });
     </script>
 
 </body>
