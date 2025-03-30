@@ -288,6 +288,31 @@
             .mobile-buttons .btn {
                 width: 100%;
             }
+
+            .controls {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                /* 3 columns */
+                gap: 10px;
+                /* Space between buttons */
+                justify-content: center;
+                align-items: center;
+                max-width: 300px;
+                /* Adjust width */
+                margin: 10px auto;
+                /* Center the grid */
+            }
+
+            /* Center last two buttons */
+            .mobile-buttons:nth-last-child(2),
+            .mobile-buttons:nth-last-child(1) {
+                grid-column: span 3;
+                /* Each button takes 2 columns */
+                justify-self: center;
+                /* Center inside grid */
+                width: 100%;
+                /* Adjust width for better centering */
+            }
         }
     </style>
 </head>
@@ -311,6 +336,7 @@
                     <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 'h' })">Hit</button>
                     <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 's' })">Stand</button>
                     <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 'r' })">Surrender</button>
+
                     <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 'd' })">Double</button>
                     <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 't' })">Split</button>
                 </div>
