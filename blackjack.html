@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blackjack Multiplayer with Firebase</title>
+  <!-- Firebase Libraries (v9 modular SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js"></script>
+  <style>
+    /* Colors and Styles from your original code */
+    :root {
+      --bg-darkest: #1d372a;
+      --bg-darker: #2a4e3c;
+      --bg-dark: #35654d;
+      --bg-light: #4d8a6c;
+      --bg-lighter: #66b08c;
+      --bg-lightest: #80d6ac;
+      --text-darkest: #0f1b14;
+      --text-darker: #1a2e24;
+      --text-dark: #264035;
+      --text-light: #d2ffcc;
+      --text-lighter: #e8ffe6;
+      --text-lightest: #f5fff2;
+      --accent-color: #4f8a66;
+      --accent-light: #66b08c;
+      --accent-lighter: #80d6ac;
+      --highlight-color: #ff6b6b;
+      --casino-red: #b22222;
+      --casino-gold: #d4af37;
+      --casino-green: #228b22;
+      --casino-black: #1b1b1b;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      line-height: 1.6;
+    }
+
+    /* Section for Room UI */
+    #room-ui {
+      padding: 1rem;
+      text-align: center;
+    }
+
+    #room-ui input {
+      padding: 0.5rem;
+      margin-right: 0.5rem;
+    }
+
+    #room-ui button {
+      background-color: var(--accent-color);
+      color: var(--text-light);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    #room-ui button:hover {
+      background-color: var(--highlight-color);
+    }
+
+    /* Main game container */
+    #game-container {
+      display: none;  /* Shown after room join/create */
+      height: calc(100vh - 60px);
+      margin-top: 0.5rem;
+    }
+
+    #game-log {
+      width: 150px;
+      background-color: var(--bg-darkest);
+      padding: 1rem;
+      overflow-y: auto;
+      border-right: 1px solid var(--accent-color);
+    }
+
+    #game-log div {
+      margin-bottom: 0.5rem;
+      opacity: 0.8;
+      font-size: 0.7rem;
+    }
+
+    #main-game {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #dealer-area {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background-color: var(--bg-darker);
+      position: relative;
+    }
+
+    #players-area {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-grow: 1;
+      gap: 1rem;
+      position: relative;
+      flex-wrap: wrap;
+    }
+
+    .player {
+      background-color: var(--bg-darker);
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+      width: 200px;
+      transition: transform 0.3s ease;
+      border: 2px solid transparent;
+    }
+
+    .player.active {
+      border-color: var(--highlight-color);
+      transform: scale(1.05);
+    }
+
+    .player-name {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .player-bet {
+      color: var(--text-light);
+      margin-bottom: 0.5rem;
+    }
+
+    .card-container {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      position: relative;
+    }
+
+    .card {
+      color: black;
+      width: 60px;
+      height: 90px;
+      background-color: var(--text-lightest);
+      border-radius: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .card.hidden {
+      background-color: var(--accent-color);
+      color: var(--text-light);
+    }
+
+    .card.red {
+      color: red;
+    }
+
+    .card-reveal {
+      animation: reveal 0.5s ease;
+    }
+
+    @keyframes reveal {
+      0% { transform: rotateY(90deg); }
+      100% { transform: rotateY(0deg); }
+    }
+
+    #game-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: var(--bg-darker);
+    }
+
+    #info-panel {
+      text-align: center;
+      font-size: 1rem;
+      flex-grow: 1;
+      margin: 0 1rem;
+    }
+
+    .btn {
+      background-color: var(--accent-color);
+      color: var(--text-light);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn:hover {
+      background-color: var(--highlight-color);
+    }
+
+    .mobile-buttons {
+      display: none;
+      /* Hidden on desktop */
+    }
+
+    @media (max-width: 1200px) {
+      body { overflow: auto; }
+      #game-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+      }
+      #game-log {
+        background-color: var(--bg-darkest);
+        width: 100%;
+        height: 60px;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 0.7rem;
+      }
+      #dealer-area {
+        background-color: var(--bg-darker);
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      #players-area {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0 0.5rem;
+      }
+      .player {
+        width: 75%;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+      }
+      .player-name,
+      .player-bet {
+        font-size: 0.8rem;
+      }
+      .card {
+        width: 35px;
+        height: 55px;
+        font-size: 0.8rem;
+      }
+      .card-container {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.25rem;
+      }
+      #game-controls {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+      }
+      #info-panel { display: none; }
+      .btn {
+        padding: 0.75rem 1rem;
+        width: 100%;
+        margin-bottom: 0.25rem;
+      }
+      .mobile-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        flex-direction: column;
+        width: 100%;
+        gap: 0.5rem;
+        background-color: var(--accent-color);
+        color: var(--text-light);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+      .mobile-buttons .btn { width: 100%; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Room Creation / Join UI -->
+  <div id="room-ui">
+    <h2>Blackjack Multiplayer</h2>
+    <button id="btn-createRoom" class="btn">Crear Sala</button>
+    <br><br>
+    <input type="text" id="input-roomCode" placeholder="Código de Sala">
+    <button id="btn-joinRoom" class="btn">Unirse a Sala</button>
+    <div id="display-roomCode" style="margin-top:1rem;"></div>
+  </div>
+
+  <!-- Main Game Container -->
+  <div id="game-container">
+    <div id="game-log"></div>
+    <div id="main-game">
+      <div id="dealer-area">
+        <h2>Crupier (Dealer)</h2>
+        <div id="dealer-cards" class="card-container"></div>
+      </div>
+      <div id="players-area"></div>
+      <div id="game-controls">
+        <button id="btn-new-round" class="btn">Nueva Ronda</button>
+        <div id="info-panel">
+          Usa teclas 1-N para cambiar jugador. H: Pedir, S: Plantarse, R: Rendirse, T: Dividir, D: Doblar
+        </div>
+        <div class="controls">
+          <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 'h' })">Hit</button>
+          <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 's' })">Stand</button>
+          <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 'r' })">Surrender</button>
+          <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 'd' })">Double</button>
+          <button class="mobile-buttons" onclick="game.handleKeyPress({ key: 't' })">Split</button>
+        </div>
+        <button id="btn-end-round" class="btn">Terminar Ronda</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***** Firebase Config & Initialization *****/
+    const firebaseConfig = {
+      apiKey: "AIzaSyBq9_O298OmuN4z1-R58NNNoGla8kL-5Rg",
+      authDomain: "server-47133.firebaseapp.com",
+      databaseURL: "https://server-47133-default-rtdb.firebaseio.com",
+      projectId: "server-47133",
+      storageBucket: "server-47133.firebasestorage.app",
+      messagingSenderId: "297740261380",
+      appId: "1:297740261380:web:7067719918a5410575bd51",
+      measurementId: "G-ENWSGJSNTL"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    /***** Room and User State *****/
+    let roomCode = "";
+    let playerId = "_" + Math.random().toString(36).substr(2, 9);
+    let playerName = prompt("Ingresa tu nombre:", "Jugador");
+    if(!playerName) playerName = "Jugador";
+    let isHost = false;
+
+    // Display Room Code on UI after creation
+    const displayRoomCodeEl = document.getElementById("display-roomCode");
+
+    /***** Helper: Generate Random Room Code *****/
+    function generateRoomCode(length = 6) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    /***** Room Creation *****/
+    document.getElementById("btn-createRoom").addEventListener("click", () => {
+      roomCode = generateRoomCode();
+      isHost = true;
+      displayRoomCodeEl.textContent = "Sala creada: " + roomCode;
+      // Create room in Firebase with initial game state
+      const roomData = {
+        host: playerId,
+        players: {},
+        gameState: {
+          deck: [], // filled when starting the round
+          dealerHand: [],
+          currentPlayerIndex: 0,
+          status: "waiting"
+        },
+        createdAt: Date.now()
+      };
+      db.ref('rooms/' + roomCode).set(roomData);
+      joinRoom();
+    });
+
+    /***** Room Join *****/
+    document.getElementById("btn-joinRoom").addEventListener("click", () => {
+      let inputCode = document.getElementById("input-roomCode").value.toUpperCase();
+      if (!inputCode) {
+        alert("Ingresa un código de sala.");
+        return;
+      }
+      roomCode = inputCode;
+      isHost = false;
+      joinRoom();
+    });
+
+    /***** Join Room Function *****/
+    function joinRoom() {
+      db.ref('rooms/' + roomCode + '/players/' + playerId).set({
+        name: playerName,
+        hand: [],
+        bet: 10,
+        chips: 100,
+        status: "waiting"
+      });
+      // Subscribe to changes for the room
+      db.ref('rooms/' + roomCode).on('value', snapshot => {
+          const roomData = snapshot.val();
+          if (roomData) {
+              updateGame(roomData);
+          }
+      });
+      // Hide room UI and show game UI
+      document.getElementById("room-ui").style.display = "none";
+      document.getElementById("game-container").style.display = "flex";
+    }
+
+    /***** Blackjack Game Class *****/
+    class BlackjackGame {
+      constructor() {
+          this.debugMode = true;
+          this.debugPlayerCount = 3;
+          this.players = [];
+          this.deck = [];
+          this.dealerHand = [];
+          this.currentPlayerIndex = 0;
+          this.gameActive = false;
+          this.firstRound = true;
+          this.suits = ['♠', '♥', '♦', '♣'];
+          this.ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+          this.cardValues = {
+              '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+              '8': 8, '9': 9, '10': 10, 'J': 10, 'Q': 10, 'K': 10, 'A': 11
+          };
+          this.initializeEventListeners();
+      }
+
+      log(message) {
+          const logEl = document.getElementById('game-log');
+          const logEntry = document.createElement('div');
+          logEntry.textContent = message;
+          logEl.prepend(logEntry);
+          if (logEl.children.length > 20) {
+              logEl.removeChild(logEl.lastChild);
+          }
+      }
+
+      initializeEventListeners() {
+          document.addEventListener('keydown', this.handleKeyPress.bind(this));
+          document.getElementById('btn-end-round').addEventListener('click', this.endRound.bind(this));
+          document.getElementById('btn-new-round').addEventListener('click', () => {
+              if(isHost) {
+                this.startNewRoundFirebase();
+              } else {
+                alert("Solo el anfitrión puede iniciar una nueva ronda.");
+              }
+          });
+      }
+
+      createDeck() {
+          this.deck = [];
+          this.suits.forEach(suit => {
+              this.ranks.forEach(rank => {
+                  this.deck.push({ suit, rank, value: this.cardValues[rank] });
+              });
+          });
+          this.shuffleDeck();
+      }
+
+      shuffleDeck() {
+          for (let i = this.deck.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
+          }
+      }
+
+      dealCard(hand) {
+          if (this.deck.length === 0) this.createDeck();
+          hand.push(this.deck.pop());
+      }
+
+      calculateHandTotal(hand) {
+          let total = hand.reduce((sum, card) => sum + card.value, 0);
+          let aces = hand.filter(card => card.rank === 'A').length;
+          while (total > 21 && aces > 0) {
+              total -= 10;
+              aces--;
+          }
+          return total;
+      }
+
+      /* Start a New Round and update Firebase (only host does this) */
+      startNewRoundFirebase() {
+          this.createDeck();
+          this.dealerHand = [];
+          // Reset players (in a full implementation, pull players from roomData)
+          // Here, we just update the gameState node.
+          const newGameState = {
+              deck: this.deck, // You may need to adjust this for security and size
+              dealerHand: [],
+              currentPlayerIndex: 0,
+              status: "active",
+              timestamp: Date.now()
+          };
+          db.ref(`rooms/${roomCode}/gameState`).set(newGameState);
+          // Reset each player’s hand/status in Firebase
+          db.ref(`rooms/${roomCode}/players`).once("value", snapshot => {
+              const playersObj = snapshot.val();
+              for(let key in playersObj) {
+                  db.ref(`rooms/${roomCode}/players/${key}`).update({
+                      hand: [],
+                      status: "playing"
+                  });
+              }
+          });
+          this.log("Nueva ronda iniciada.");
+      }
+
+      renderPlayers(playersData) {
+          const playersArea = document.getElementById('players-area');
+          playersArea.innerHTML = '';
+          let index = 0;
+          this.players = [];
+          for (let id in playersData) {
+              const player = playersData[id];
+              player.id = id;
+              this.players.push(player);
+              const total = this.calculateHandTotal(player.hand);
+              const playerDiv = document.createElement('div');
+              playerDiv.className = `player ${index === this.currentPlayerIndex ? 'active' : ''}`;
+              playerDiv.innerHTML =
+                  `<div class="player-total">Total: ${total}</div>
+                   <div class="player-name">${player.name}</div>
+                   <div class="player-bet">Apuesta: $${player.bet} | Fichas: $${player.chips}</div>
+                   <div id="player-${index}-cards" class="card-container"></div>`;
+              playersArea.appendChild(playerDiv);
+              this.renderPlayerHand(index, player.hand);
+              index++;
+          }
+      }
+
+      renderPlayerHand(playerIndex, hand) {
+          const cardContainer = document.getElementById(`player-${playerIndex}-cards`);
+          if(!cardContainer) return;
+          cardContainer.innerHTML = '';
+          hand.forEach((card) => {
+              const cardEl = document.createElement('div');
+              cardEl.className = `card ${card.suit === '♥' || card.suit === '♦' ? 'red' : ''}`;
+              cardEl.textContent = `${card.rank}${card.suit}`;
+              cardContainer.appendChild(cardEl);
+          });
+      }
+
+      renderDealerHand(hideSecond = true) {
+          const dealerCardsEl = document.getElementById('dealer-cards');
+          dealerCardsEl.innerHTML = '';
+          this.dealerHand.forEach((card, index) => {
+              const cardEl = document.createElement('div');
+              if (index === 1 && hideSecond) {
+                  cardEl.className = 'card hidden';
+                  cardEl.textContent = '?';
+              } else {
+                  cardEl.className = `card ${card.suit === '♥' || card.suit === '♦' ? 'red' : ''} card-reveal`;
+                  cardEl.textContent = `${card.rank}${card.suit}`;
+              }
+              dealerCardsEl.appendChild(cardEl);
+          });
+      }
+
+      handleKeyPress(event) {
+          if (!this.gameActive) return;
+          const key = event.key?.toLowerCase();
+          if (!key) return;
+          if (!isNaN(key)) {
+              const playerNum = parseInt(key, 10);
+              if (playerNum > 0 && playerNum <= this.players.length) {
+                  this.currentPlayerIndex = playerNum - 1;
+                  this.renderPlayers(this.players.reduce((obj, player) => {
+                      obj[player.id] = player;
+                      return obj;
+                  }, {}));
+                  this.log(`Cambiando al jugador ${this.players[this.currentPlayerIndex].name}`);
+                  return;
+              }
+          }
+          // Here we update moves locally and then update Firebase.
+          // For brevity, this demo only logs the action.
+          const currentPlayer = this.players[this.currentPlayerIndex];
+          switch (key) {
+              case 'h': // Hit
+                  // Only allow if player is playing
+                  if (currentPlayer && currentPlayer.status === 'playing') {
+                      // Update local hand and then update Firebase
+                      db.ref(`rooms/${roomCode}/players/${currentPlayer.id}/hand`)
+                        .once("value")
+                        .then(snapshot => {
+                          const hand = snapshot.val() || [];
+                          this.dealCard(hand);
+                          db.ref(`rooms/${roomCode}/players/${currentPlayer.id}`).update({ hand });
+                          const total = this.calculateHandTotal(hand);
+                          this.log(`${currentPlayer.name} pidió carta. Total: ${total}`);
+                        });
+                  }
+                  break;
+              case 's': // Stand
+                  if (currentPlayer && currentPlayer.status === 'playing') {
+                      db.ref(`rooms/${roomCode}/players/${currentPlayer.id}`).update({ status: "standing" });
+                      this.log(`${currentPlayer.name} se plantó`);
+                  }
+                  break;
+              // Additional moves (r, d, t) can be handled similarly
+          }
+      }
+
+      async endRound() {
+          // Reveal hidden dealer card and simulate dealer actions
+          db.ref(`rooms/${roomCode}/gameState`).once("value", snapshot => {
+              const state = snapshot.val();
+              if(state) {
+                  this.dealerHand = state.dealerHand;
+              }
+          });
+          this.renderDealerHand(false);
+          let dealerTotal = this.calculateHandTotal(this.dealerHand);
+          while (dealerTotal < 17) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              this.dealCard(this.dealerHand);
+              dealerTotal = this.calculateHandTotal(this.dealerHand);
+              db.ref(`rooms/${roomCode}/gameState/dealerHand`).set(this.dealerHand);
+              this.renderDealerHand(false);
+              this.log(`Crupier pide carta. Total: ${dealerTotal}`);
+          }
+          // Evaluate each player (a simplified example)
+          for (let player of this.players) {
+              const playerTotal = this.calculateHandTotal(player.hand);
+              if (player.status === 'surrendered') {
+                  db.ref(`rooms/${roomCode}/players/${player.id}/chips`).set(player.chips - player.bet/2);
+                  this.log(`${player.name} se rindió. Pierde la mitad de su apuesta.`);
+              } else if (playerTotal > 21) {
+                  db.ref(`rooms/${roomCode}/players/${player.id}/chips`).set(player.chips - player.bet);
+                  this.log(`${player.name} se pasó. Pierde $${player.bet}`);
+              } else if (dealerTotal > 21 || playerTotal > dealerTotal) {
+                  db.ref(`rooms/${roomCode}/players/${player.id}/chips`).set(player.chips + player.bet);
+                  this.log(`${player.name} gana $${player.bet}`);
+              } else if (playerTotal < dealerTotal) {
+                  db.ref(`rooms/${roomCode}/players/${player.id}/chips`).set(player.chips - player.bet);
+                  this.log(`${player.name} pierde $${player.bet}`);
+              } else {
+                  this.log(`${player.name} empata`);
+              }
+          }
+          this.gameActive = false;
+          this.log('Ronda terminada');
+      }
+    }
+
+    /***** Update Game from Firebase Data *****/
+    const game = new BlackjackGame();
+    function updateGame(roomData) {
+      // Update players and gameState from roomData coming from Firebase
+      if (roomData.players) {
+          game.renderPlayers(roomData.players);
+      }
+      if (roomData.gameState) {
+          game.deck = roomData.gameState.deck || game.deck;
+          game.dealerHand = roomData.gameState.dealerHand || [];
+          game.currentPlayerIndex = roomData.gameState.currentPlayerIndex || 0;
+          game.gameActive = roomData.gameState.status === "active";
+          game.renderDealerHand();
+      }
+    }
+
+    /***** Allow touch selection on mobile players area *****/
+    document.addEventListener("DOMContentLoaded", function () {
+      const playersArea = document.getElementById("players-area");
+      playersArea.addEventListener("click", function (event) {
+          if (window.innerWidth >= 1200) return;
+          const playerElement = event.target.closest('.player');
+          if (!playerElement) return;
+          const allPlayers = Array.from(playersArea.querySelectorAll('.player'));
+          const playerIndex = allPlayers.indexOf(playerElement);
+          if (playerIndex !== -1 && playerIndex < game.players.length) {
+              game.currentPlayerIndex = playerIndex;
+              game.renderPlayers(game.players.reduce((obj, player) => {
+                  obj[player.id] = player;
+                  return obj;
+              }, {}));
+              game.log(`Cambiando al jugador ${game.players[playerIndex].name}`);
+          }
+      });
+    });
+  </script>
+</body>
+</html>
