@@ -336,41 +336,71 @@
                 const loadingElement = document.getElementById('loading');
                 const errorContainer = document.getElementById('error-container');
                 
-                // Load the list of torrent files from the directory
-                const torrentFilesResponse = await fetch('/files/torrents/');
-                if (!torrentFilesResponse.ok) {
-                    throw new Error(`Failed to load torrent directory: ${torrentFilesResponse.statusText}`);
+                // Create a function to read directory contents
+                async function readDirectory(path) {
+                    try {
+                        const response = await fetch(path);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                        
+                        // Parse the directory listing HTML to extract files
+                        const html = await response.text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const links = Array.from(doc.querySelectorAll('a'));
+                        
+                        // Extract filenames from links (skipping parent directory links)
+                        return links
+                            .map(link => link.getAttribute('href'))
+                            .filter(href => href && !href.endsWith('/') && href !== '../');
+                    } catch (error) {
+                        console.error(`Failed to read directory ${path}:`, error);
+                        return [];
+                    }
                 }
                 
-                const torrentFilesList = await torrentFilesResponse.json();
+                // Load the list of torrent files from the directory
+                const torrentFiles = await readDirectory('files/torrents/');
                 
                 // Load the links.json file containing magnet links
-                const linksResponse = await fetch('/files/links.json');
-                if (!linksResponse.ok) {
-                    throw new Error(`Failed to load links.json: ${linksResponse.statusText}`);
+                let linksData = {};
+                try {
+                    const linksResponse = await fetch('files/links.json');
+                    if (linksResponse.ok) {
+                        linksData = await linksResponse.json();
+                    } else {
+                        console.warn('links.json not found or invalid, continuing without magnet links');
+                    }
+                } catch (error) {
+                    console.warn('Error loading links.json:', error);
                 }
                 
-                const linksData = await linksResponse.json();
-                
                 // Create torrent file objects with metadata
-                const torrentFiles = [];
-                for (const fileName of torrentFilesList) {
+                const processedTorrentFiles = [];
+                for (const fileName of torrentFiles) {
                     if (isTorrent(fileName)) {
-                        const fileResponse = await fetch(`/files/torrents/${fileName}`);
-                        if (!fileResponse.ok) continue;
-                        
-                        const fileStats = {
-                            name: fileName,
-                            lastModified: new Date(fileResponse.headers.get('Last-Modified')).getTime(),
-                            size: parseInt(fileResponse.headers.get('Content-Length') || '0')
-                        };
-                        
-                        torrentFiles.push(fileStats);
+                        try {
+                            const fileResponse = await fetch(`files/torrents/${fileName}`);
+                            if (!fileResponse.ok) continue;
+                            
+                            // Get file stats from headers if available
+                            const lastModified = new Date(fileResponse.headers.get('Last-Modified') || new Date()).getTime();
+                            const size = parseInt(fileResponse.headers.get('Content-Length') || '0');
+                            
+                            processedTorrentFiles.push({
+                                name: fileName,
+                                lastModified: lastModified,
+                                size: size
+                            });
+                        } catch (error) {
+                            console.error(`Error processing file ${fileName}:`, error);
+                        }
                     }
                 }
                 
                 // Sort files by last modified date (most recent first)
-                const sortedFiles = torrentFiles.sort((a, b) => b.lastModified - a.lastModified);
+                const sortedFiles = processedTorrentFiles.sort((a, b) => b.lastModified - a.lastModified);
                 
                 // Update stats
                 document.getElementById('total-count').textContent = sortedFiles.length;
@@ -437,7 +467,7 @@
                                 </div>
                             </div>
                             <div class="torrent-actions">
-                                <a href="/files/torrents/${encodeURIComponent(torrentFile.name)}" download class="btn">
+                                <a href="files/torrents/${encodeURIComponent(torrentFile.name)}" download class="btn">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                         <polyline points="7 10 12 15 17 10"></polyline>
