@@ -405,118 +405,124 @@
         return false;
       }
 
+      function isSpectraCode(bits, N) {
+        // Require all three finder patterns to be present
+        const patterns = detectFinderPatterns(bits, N);
+        return patterns.topLeft && patterns.topRight && patterns.bottomLeft;
+      }
+
       // ————————————————
       // Decode matrix from image file with finder pattern detection
       // ————————————————
       async function decodeMatrixToPayloadFromImage(file) {
         return new Promise((resolve, reject) => {
           try {
-            const img = new Image();
-            const url = URL.createObjectURL(file);
+        const img = new Image();
+        const url = URL.createObjectURL(file);
 
-            img.onload = () => {
-              try {
-                const canvas = getElement('scanCanvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                  throw new Error('Could not get 2D context from scan canvas');
-                }
-                
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0, img.width, img.height);
+        img.onload = () => {
+          try {
+            const canvas = getElement('scanCanvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+          throw new Error('Could not get 2D context from scan canvas');
+            }
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0, img.width, img.height);
 
-                const modulePx = 8;
-                if (img.width % modulePx !== 0 || img.height % modulePx !== 0) {
-                  throw new Error('Image dimensions must be exact multiples of 8 pixels');
-                }
+            const modulePx = 8;
+            if (img.width % modulePx !== 0 || img.height % modulePx !== 0) {
+          throw new Error('Image dimensions must be exact multiples of 8 pixels');
+            }
 
-                const N = img.width / modulePx;
-                
-                // Minimum size check for finder patterns
-                if (N < 21) {
-                  throw new Error('Image too small to contain finder patterns (minimum 21×21 modules)');
-                }
+            const N = img.width / modulePx;
+            
+            // Minimum size check for finder patterns
+            if (N < 21) {
+          throw new Error('Image too small to contain finder patterns (minimum 21×21 modules)');
+            }
 
-                const bits = [];
+            const bits = [];
 
-                // Sample every module's center
-                for (let r = 0; r < N; r++) {
-                  for (let c = 0; c < N; c++) {
-                    const x = c * modulePx + (modulePx / 2);
-                    const y = r * modulePx + (modulePx / 2);
-                    const pixel = ctx.getImageData(x, y, 1, 1).data;
-                    const [rVal, gVal, bVal] = pixel;
-                    
-                    // More sophisticated bit detection
-                    const brightness = (rVal + gVal + bVal) / 3;
-                    bits.push(brightness > 128 ? 0 : 1); // Inverted: dark = 1, light = 0
-                  }
-                }
+            // Sample every module's center
+            for (let r = 0; r < N; r++) {
+          for (let c = 0; c < N; c++) {
+            const x = c * modulePx + (modulePx / 2);
+            const y = r * modulePx + (modulePx / 2);
+            const pixel = ctx.getImageData(x, y, 1, 1).data;
+            const [rVal, gVal, bVal] = pixel;
+            
+            // More sophisticated bit detection
+            const brightness = (rVal + gVal + bVal) / 3;
+            bits.push(brightness > 128 ? 0 : 1); // Inverted: dark = 1, light = 0
+          }
+            }
 
-                // Detect and validate finder patterns
-                const patterns = detectFinderPatterns(bits, N);
-                console.log('📍 Finder patterns detected:', patterns);
-                
-                if (!patterns.topLeft || !patterns.topRight || !patterns.bottomLeft) {
-                  console.warn('⚠️ Some finder patterns missing or corrupted, attempting decode anyway...');
-                }
+            // Detect and validate finder patterns
+            const patterns = detectFinderPatterns(bits, N);
+            console.log('📍 Finder patterns detected:', patterns);
+            
+            if (!patterns.topLeft || !patterns.topRight || !patterns.bottomLeft) {
+          console.warn('⚠️ Some finder patterns missing or corrupted, attempting decode anyway...');
+            }
 
-                // Extract data bits (excluding finder patterns and separators)
-                const dataBits = extractDataBits(bits, N);
+            // Extract data bits (excluding finder patterns and separators)
+            const dataBits = extractDataBits(bits, N);
 
-                // Pack bits to bytes
-                const totalBits = dataBits.length;
-                const totalBytes = Math.ceil(totalBits / 8);
-                const byteArray = new Uint8Array(totalBytes);
-                dataBits.forEach((bit, i) => {
-                  if (bit === 1) {
-                    const byteIdx = Math.floor(i / 8);
-                    const bitPos = 7 - (i % 8);
-                    byteArray[byteIdx] |= (1 << bitPos);
-                  }
-                });
+            // Pack bits to bytes
+            const totalBits = dataBits.length;
+            const totalBytes = Math.ceil(totalBits / 8);
+            const byteArray = new Uint8Array(totalBytes);
+            dataBits.forEach((bit, i) => {
+          if (bit === 1) {
+            const byteIdx = Math.floor(i / 8);
+            const bitPos = 7 - (i % 8);
+            byteArray[byteIdx] |= (1 << bitPos);
+          }
+            });
 
-                // Read length and validate
-                if (totalBytes < 3) {
-                  throw new Error('Decoded data too short to contain length header and CRC');
-                }
-                
-                const lenHi = byteArray[0];
-                const lenLo = byteArray[1];
-                const length = (lenHi << 8) | lenLo;
-                const expectedTotal = length + 3;
+            // Read length and validate
+            if (totalBytes < 3) {
+          throw new Error('Decoded data too short to contain length header and CRC');
+            }
+            
+            const lenHi = byteArray[0];
+            const lenLo = byteArray[1];
+            const length = (lenHi << 8) | lenLo;
+            const expectedTotal = length + 3;
 
-                if (byteArray.length < expectedTotal) {
-                  throw new Error(`Decoded byte count (${byteArray.length}) less than expected (${expectedTotal})`);
-                }
+            if (byteArray.length < expectedTotal) {
+          throw new Error(`Decoded byte count (${byteArray.length}) less than expected (${expectedTotal})`);
+            }
 
-                // Validate CRC
-                const raw = Array.from(byteArray.slice(0, length + 2));
-                const recCrc = byteArray[length + 2];
-                const computedCrc = computeCrc8(raw);
-                if (recCrc !== computedCrc) {
-                  throw new Error(`CRC validation failed: received 0x${recCrc.toString(16)}, expected 0x${computedCrc.toString(16)}`);
-                }
+            // Validate CRC
+            const raw = Array.from(byteArray.slice(0, length + 2));
+            const recCrc = byteArray[length + 2];
+            const computedCrc = computeCrc8(raw);
+            if (recCrc !== computedCrc) {
+          throw new Error(`CRC validation failed: received 0x${recCrc.toString(16)}, expected 0x${computedCrc.toString(16)}`);
+            }
 
-                const dataBytes = new Uint8Array(raw.slice(2, 2 + length));
-                console.log('✅ Successfully decoded with finder pattern validation');
-                resolve(dataBytes);
-              } catch (innerErr) {
-                reject(innerErr);
-              } finally {
-                URL.revokeObjectURL(url);
-              }
-            };
+            const dataBytes = new Uint8Array(raw.slice(2, 2 + length));
+            console.log('✅ Successfully decoded with finder pattern validation');
+            resolve(dataBytes);
+          } catch (innerErr) {
+            reject(innerErr);
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        };
 
-            img.onerror = () => {
-              URL.revokeObjectURL(url);
-              reject(new Error('Failed to load image file'));
-            };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('Failed to load image file'));
+        };
 
-            img.src = url;
+        img.src = url;
           } catch (e) {
-            reject(new Error(`Failed to process image file: ${e.message}`));
+        reject(new Error(`Failed to process image file: ${e.message}`));
           }
         });
       }
