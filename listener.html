@@ -10,9 +10,16 @@
     button, textarea { font-size:1rem; padding:0.75rem; width:100%; border:1px solid #ccc; border-radius:0.5rem; }
     textarea { height:6rem; }
     div.textgroup { display:flex; gap:0.5rem; align-items:stretch; }
+    .statusBar { position:sticky; top:0; background:#fff; z-index:10; padding:0.5rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ccc; }
+    .indicator { width:1rem; height:1rem; border-radius:50%; background:#888; display:inline-block; }
   </style>
 </head>
 <body>
+  <div class="statusBar">
+    <span>Connected: <strong id="connStatus">none</strong></span>
+    <span>On Air <span id="connIndicator" class="indicator"></span></span>
+  </div>
+
   <h1>Listener</h1>
 
   <h2>Offer</h2>
@@ -20,11 +27,13 @@
     <textarea id="offer"></textarea>
     <button id="pasteOffer">Paste</button>
   </div>
+
   <h2>Answer</h2>
   <div class="textgroup">
     <textarea id="answer"></textarea>
     <button id="copyAnswer">Copy</button>
   </div>
+
   <button id="makeAnswer">Connect</button>
   <audio id="player" controls autoplay></audio>
 
@@ -32,7 +41,7 @@
   ['offer','answer'].forEach(id => {
     const ta = document.getElementById(id);
     ta.value = localStorage.getItem(id) || '';
-    ta.addEventListener('input', ()=>localStorage.setItem(id, ta.value));
+    ta.addEventListener('input', ()=> localStorage.setItem(id, ta.value));
   });
 
   let pc;
@@ -51,12 +60,16 @@
     if (!confirm('Create answer and connect?')) return;
     const offer = JSON.parse(document.getElementById('offer').value);
     pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+    pc.onconnectionstatechange = ()=>{
+      const s = pc.connectionState;
+      document.getElementById('connStatus').textContent = s;
+      document.getElementById('connIndicator').style.background = s==='connected'? 'lime':'#888';
+    };
     pc.ontrack = e=>document.getElementById('player').srcObject = e.streams[0];
     pc.onicecandidate = ()=>{
       if (pc.localDescription) {
-        const sdp = JSON.stringify(pc.localDescription);
-        document.getElementById('answer').value = sdp;
-        localStorage.setItem('answer', sdp);
+        document.getElementById('answer').value = JSON.stringify(pc.localDescription);
+        localStorage.setItem('answer', document.getElementById('answer').value);
       }
     };
     await pc.setRemoteDescription(offer);
@@ -64,9 +77,7 @@
     await pc.setLocalDescription(ans);
   });
 
-  window.addEventListener('beforeunload', e => {
-    if (pc) { e.preventDefault(); e.returnValue = ''; }
-  });
+  window.addEventListener('beforeunload', e=>{ if(pc){ e.preventDefault(); e.returnValue=''; }});
   </script>
 </body>
 </html>
