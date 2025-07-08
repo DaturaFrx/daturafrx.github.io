@@ -8,7 +8,6 @@
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-    /* Scrollbar styling */
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -223,7 +222,7 @@
     const usuario = 'DaturaFrx';
     const repositorio = 'db';
     const apiBase = `https://api.github.com/repos/${usuario}/${repositorio}/contents`;
-    const categorias = { Pins: [], Imágenes: [], Comprimidos: [], Texto: [], Otros: [], Forum: [] };
+    const categorias = { Pins: [], Imágenes: [], Comprimidos: [], Texto: [], Otros: [], Anuncios: [] };
     const extensiones = {
       Imágenes: ['.png','.jpg','.jpeg','.gif','.bmp','.webp','.svg'],
       Comprimidos: ['.zip','.rar','.7z','.tar','.gz'],
@@ -234,17 +233,14 @@
     const tienePin = n => /@@pin/i.test(n);
     const normalizar = s => s.toLowerCase();
 
-    // Fuzzy search function
     function fuzzyMatch(text, query) {
       if (!query) return true;
       
       const textLower = text.toLowerCase();
       const queryLower = query.toLowerCase();
       
-      // Exact match gets highest priority
       if (textLower.includes(queryLower)) return true;
       
-      // Fuzzy matching - check if all query characters appear in order
       let textIndex = 0;
       let queryIndex = 0;
       
@@ -268,7 +264,6 @@
         sha: file.sha
       };
 
-      // Check if it's in forum folder
       if (file.path.startsWith('forum/') && extensiones.Texto.some(ext => normalizar(name).endsWith(ext))) {
         categorias.Forum.push(obj);
       } else if (tienePin(name)) {
@@ -294,14 +289,11 @@
       }
     }
 
-    // Fetch file content and commit info
     async function fetchFileWithDate(file) {
       try {
-        // Get file content
         const contentResp = await fetch(file.url);
         const content = await contentResp.text();
         
-        // Get commit info for last modified date
         const commitsUrl = `https://api.github.com/repos/${usuario}/${repositorio}/commits?path=${file.path}&per_page=1`;
         const commitsResp = await fetch(commitsUrl);
         const commits = await commitsResp.json();
@@ -338,7 +330,6 @@
         div.className = 'tab-content';
         
         if (cat === 'Forum') {
-          // Special handling for forum posts
           const forumFiles = await Promise.all(files.map(fetchFileWithDate));
           forumFiles.sort((a, b) => b.lastModified - a.lastModified);
           
@@ -367,7 +358,6 @@
             const li = document.createElement('li');
             li.className = 'file-item';
             
-            // Add image preview for image files
             if (cat === 'Imágenes') {
               const img = document.createElement('img');
               img.src = f.url;
@@ -407,21 +397,17 @@
       const q = document.getElementById('search').value.toLowerCase();
       const orden = document.getElementById('sortSelect').value;
       
-      // Store original data
       const originalData = {};
       for (const cat in categorias) {
         originalData[cat] = [...categorias[cat]];
       }
       
-      // Reset categories
       for (const cat in categorias) {
         categorias[cat] = [];
       }
       
-      // Re-explore to get fresh data
       await explorar();
       
-      // Apply fuzzy search and sort
       for (const cat in categorias) {
         let arr = categorias[cat];
         arr = arr.filter(f => fuzzyMatch(f.name, q));
