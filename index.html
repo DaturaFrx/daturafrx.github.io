@@ -2,13 +2,13 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Explorador GitHub – DaturaFrx/db</title>
+  <title>DaturaFrx/db</title>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-    }
+    /* Scrollbar styling */
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -125,7 +125,70 @@
       color: #fafafa;
     }
 
-    /* Scrollbar styling */
+    /* Image preview styling */
+    .image-preview {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin-right: 0.75rem;
+      border: 1px solid #27272a;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem;
+      border-radius: 4px;
+      transition: background-color 0.15s ease;
+    }
+
+    .file-item:hover {
+      background: #18181b;
+    }
+
+    .file-info {
+      flex: 1;
+    }
+
+    .file-name {
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+
+    .file-date {
+      font-size: 12px;
+      color: #71717a;
+    }
+
+    .forum-post {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .forum-title {
+      color: #fafafa;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .forum-date {
+      font-size: 12px;
+      color: #71717a;
+      font-weight: 400;
+    }
+
+    .forum-content {
+      color: #e4e4e7;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
     ::-webkit-scrollbar {
       width: 8px;
     }
@@ -160,7 +223,7 @@
     const usuario = 'DaturaFrx';
     const repositorio = 'db';
     const apiBase = `https://api.github.com/repos/${usuario}/${repositorio}/contents`;
-    const categorias = { Pins: [], Imágenes: [], Comprimidos: [], Texto: [], Otros: [] };
+    const categorias = { Pins: [], Imágenes: [], Comprimidos: [], Texto: [], Otros: [], Forum: [] };
     const extensiones = {
       Imágenes: ['.png','.jpg','.jpeg','.gif','.bmp','.webp','.svg'],
       Comprimidos: ['.zip','.rar','.7z','.tar','.gz'],
@@ -171,16 +234,54 @@
     const tienePin = n => /@@pin/i.test(n);
     const normalizar = s => s.toLowerCase();
 
+    // Fuzzy search function
+    function fuzzyMatch(text, query) {
+      if (!query) return true;
+      
+      const textLower = text.toLowerCase();
+      const queryLower = query.toLowerCase();
+      
+      // Exact match gets highest priority
+      if (textLower.includes(queryLower)) return true;
+      
+      // Fuzzy matching - check if all query characters appear in order
+      let textIndex = 0;
+      let queryIndex = 0;
+      
+      while (textIndex < textLower.length && queryIndex < queryLower.length) {
+        if (textLower[textIndex] === queryLower[queryIndex]) {
+          queryIndex++;
+        }
+        textIndex++;
+      }
+      
+      return queryIndex === queryLower.length;
+    }
+
     function categorizar(file) {
       const name = file.path.split('/').pop();
       const display = quitarPin(name);
-      const obj = { name: display, url: file.download_url };
+      const obj = { 
+        name: display, 
+        url: file.download_url,
+        path: file.path,
+        sha: file.sha
+      };
 
-      if (tienePin(name)) categorias.Pins.push(obj);
-      else if (extensiones.Imágenes.some(ext => normalizar(name).endsWith(ext))) categorias.Imágenes.push(obj);
-      else if (extensiones.Comprimidos.some(ext => normalizar(name).endsWith(ext))) categorias.Comprimidos.push(obj);
-      else if (extensiones.Texto.some(ext => normalizar(name).endsWith(ext))) categorias.Texto.push(obj);
-      else categorias.Otros.push(obj);
+      // Check if it's in forum folder
+      if (file.path.startsWith('forum/') && extensiones.Texto.some(ext => normalizar(name).endsWith(ext))) {
+        categorias.Forum.push(obj);
+      } else if (tienePin(name)) {
+        categorias.Pins.push(obj);
+      } else if (extensiones.Imágenes.some(ext => normalizar(name).endsWith(ext))) {
+        categorias.Imágenes.push(obj);
+      } else if (extensiones.Comprimidos.some(ext => normalizar(name).endsWith(ext))) {
+        categorias.Comprimidos.push(obj);
+      } else if (extensiones.Texto.some(ext => normalizar(name).endsWith(ext))) {
+        categorias.Texto.push(obj);
+      } else {
+        categorias.Otros.push(obj);
+      }
     }
 
     async function explorar(path = '') {
@@ -193,7 +294,32 @@
       }
     }
 
-    function render() {
+    // Fetch file content and commit info
+    async function fetchFileWithDate(file) {
+      try {
+        // Get file content
+        const contentResp = await fetch(file.url);
+        const content = await contentResp.text();
+        
+        // Get commit info for last modified date
+        const commitsUrl = `https://api.github.com/repos/${usuario}/${repositorio}/commits?path=${file.path}&per_page=1`;
+        const commitsResp = await fetch(commitsUrl);
+        const commits = await commitsResp.json();
+        
+        const lastModified = commits.length > 0 ? new Date(commits[0].commit.committer.date) : new Date();
+        
+        return {
+          ...file,
+          content,
+          lastModified
+        };
+      } catch (error) {
+        console.error('Error fetching file:', error);
+        return { ...file, content: '', lastModified: new Date() };
+      }
+    }
+
+    async function render() {
       const tabs = document.getElementById('tabs');
       const contents = document.getElementById('tab-contents');
       tabs.innerHTML = '';
@@ -210,18 +336,63 @@
         const div = document.createElement('div');
         div.id = `tab-${cat}`;
         div.className = 'tab-content';
-        const ul = document.createElement('ul');
-        files.forEach(f => {
-          const li = document.createElement('li');
-          const a = document.createElement('a');
-          a.href = f.url;
-          a.textContent = f.name;
-          a.download = f.name;
-          a.target = '_blank';
-          li.appendChild(a);
-          ul.appendChild(li);
-        });
-        div.appendChild(ul);
+        
+        if (cat === 'Forum') {
+          // Special handling for forum posts
+          const forumFiles = await Promise.all(files.map(fetchFileWithDate));
+          forumFiles.sort((a, b) => b.lastModified - a.lastModified);
+          
+          forumFiles.forEach(file => {
+            const post = document.createElement('div');
+            post.className = 'forum-post';
+            
+            const title = document.createElement('div');
+            title.className = 'forum-title';
+            title.innerHTML = `
+              <span>${file.name}</span>
+              <span class="forum-date">${file.lastModified.toLocaleDateString()}</span>
+            `;
+            
+            const content = document.createElement('div');
+            content.className = 'forum-content';
+            content.textContent = file.content;
+            
+            post.appendChild(title);
+            post.appendChild(content);
+            div.appendChild(post);
+          });
+        } else {
+          const ul = document.createElement('ul');
+          files.forEach(f => {
+            const li = document.createElement('li');
+            li.className = 'file-item';
+            
+            // Add image preview for image files
+            if (cat === 'Imágenes') {
+              const img = document.createElement('img');
+              img.src = f.url;
+              img.className = 'image-preview';
+              img.loading = 'lazy';
+              li.appendChild(img);
+            }
+            
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'file-info';
+            
+            const a = document.createElement('a');
+            a.href = f.url;
+            a.className = 'file-name';
+            a.textContent = f.name;
+            a.download = f.name;
+            a.target = '_blank';
+            
+            fileInfo.appendChild(a);
+            li.appendChild(fileInfo);
+            ul.appendChild(li);
+          });
+          div.appendChild(ul);
+        }
+        
         contents.appendChild(div);
       }
       if (tabs.firstChild) tabs.firstChild.click();
@@ -232,16 +403,33 @@
       document.querySelectorAll('.tab-content').forEach(div => div.classList.toggle('active', div.id === `tab-${cat}`));
     }
 
-    function filtrarYOrdenar() {
+    async function filtrarYOrdenar() {
       const q = document.getElementById('search').value.toLowerCase();
       const orden = document.getElementById('sortSelect').value;
+      
+      // Store original data
+      const originalData = {};
+      for (const cat in categorias) {
+        originalData[cat] = [...categorias[cat]];
+      }
+      
+      // Reset categories
+      for (const cat in categorias) {
+        categorias[cat] = [];
+      }
+      
+      // Re-explore to get fresh data
+      await explorar();
+      
+      // Apply fuzzy search and sort
       for (const cat in categorias) {
         let arr = categorias[cat];
-        arr = arr.filter(f => f.name.toLowerCase().includes(q));
+        arr = arr.filter(f => fuzzyMatch(f.name, q));
         arr.sort((a,b) => orden === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
         categorias[cat] = arr;
       }
-      render();
+      
+      await render();
     }
 
     document.getElementById('search').addEventListener('input', filtrarYOrdenar);
