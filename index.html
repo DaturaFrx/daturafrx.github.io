@@ -1,46 +1,256 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Base64 Encoder/Decoder (UTF-8)</title>
+  <meta charset="UTF-8" />
+  <title>Explorador GitHub – DaturaFrx/db</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #e4e4e7;
+      background: #09090b;
+      margin: 0;
+      padding: 2rem;
+      font-size: 14px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #fafafa;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.025em;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+
+    input, select {
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #27272a;
+      background: #18181b;
+      color: #e4e4e7;
+      font-size: 14px;
+      transition: border-color 0.15s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #3f3f46;
+    }
+
+    input {
+      flex: 1;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #27272a;
+      padding-bottom: 0;
+    }
+
+    .tab-button {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: none;
+      color: #71717a;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 6px 6px 0 0;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+
+    .tab-button:hover {
+      color: #d4d4d8;
+      background: #18181b;
+    }
+
+    .tab-button.active {
+      color: #fafafa;
+      background: #18181b;
+    }
+
+    .tab-button.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #fafafa;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    li {
+      margin: 0.5rem 0;
+      padding: 0.25rem 0;
+    }
+
+    a {
+      color: #a1a1aa;
+      text-decoration: none;
+      transition: color 0.15s ease;
+      font-weight: 400;
+    }
+
+    a:hover {
+      color: #fafafa;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #18181b;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #52525b;
+    }
+  </style>
 </head>
 <body>
-  <textarea id="input" placeholder="Enter text or base64..." style="width: 100%; height: 100px;" autofocus></textarea>
-  <textarea id="output" placeholder="Output appears here..." readonly style="width: 100%; height: 100px;"></textarea>
+  <h1>📂 Explorador: DaturaFrx/db</h1>
+  <div class="controls">
+    <input type="text" id="search" placeholder="Buscar archivos..." />
+    <select id="sortSelect">
+      <option value="asc">Ordenar A → Z</option>
+      <option value="desc">Ordenar Z → A</option>
+    </select>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="tab-contents"></div>
 
   <script>
-    const input = document.getElementById('input');
-    const output = document.getElementById('output');
+    const usuario = 'DaturaFrx';
+    const repositorio = 'db';
+    const apiBase = `https://api.github.com/repos/${usuario}/${repositorio}/contents`;
+    const categorias = { Pins: [], Imágenes: [], Comprimidos: [], Texto: [], Otros: [] };
+    const extensiones = {
+      Imágenes: ['.png','.jpg','.jpeg','.gif','.bmp','.webp','.svg'],
+      Comprimidos: ['.zip','.rar','.7z','.tar','.gz'],
+      Texto: ['.txt','.md','.csv','.json','.xml','.html']
+    };
 
-    function encodeUTF8toBase64(str) {
-      return btoa(unescape(encodeURIComponent(str)));
+    const quitarPin = n => n.replace(/@@pin/gi, '');
+    const tienePin = n => /@@pin/i.test(n);
+    const normalizar = s => s.toLowerCase();
+
+    function categorizar(file) {
+      const name = file.path.split('/').pop();
+      const display = quitarPin(name);
+      const obj = { name: display, url: file.download_url };
+
+      if (tienePin(name)) categorias.Pins.push(obj);
+      else if (extensiones.Imágenes.some(ext => normalizar(name).endsWith(ext))) categorias.Imágenes.push(obj);
+      else if (extensiones.Comprimidos.some(ext => normalizar(name).endsWith(ext))) categorias.Comprimidos.push(obj);
+      else if (extensiones.Texto.some(ext => normalizar(name).endsWith(ext))) categorias.Texto.push(obj);
+      else categorias.Otros.push(obj);
     }
 
-    function decodeBase64toUTF8(str) {
-      return decodeURIComponent(escape(atob(str)));
-    }
-
-    function isProbablyBase64(str) {
-      const cleaned = str.trim().replace(/\s+/g, '');
-      return /^[A-Za-z0-9+/=]{4,}$/.test(cleaned) && cleaned.length % 4 === 0;
-    }
-
-    input.addEventListener('input', () => {
-      const text = input.value.trim();
-      if (text === '') {
-        output.value = '';
-        return;
+    async function explorar(path = '') {
+      const url = path ? `${apiBase}/${path}` : apiBase;
+      const resp = await fetch(url);
+      const json = await resp.json();
+      for (const item of json) {
+        if (item.type === 'file') categorizar(item);
+        else if (item.type === 'dir') await explorar(item.path);
       }
-      try {
-        if (isProbablyBase64(text)) {
-          output.value = decodeBase64toUTF8(text);
-        } else {
-          output.value = encodeUTF8toBase64(text);
-        }
-      } catch (e) {
-        output.value = 'Invalid input';
+    }
+
+    function render() {
+      const tabs = document.getElementById('tabs');
+      const contents = document.getElementById('tab-contents');
+      tabs.innerHTML = '';
+      contents.innerHTML = '';
+
+      for (const [cat, files] of Object.entries(categorias)) {
+        if (!files.length) continue;
+        const btn = document.createElement('button');
+        btn.textContent = cat;
+        btn.className = 'tab-button';
+        btn.onclick = () => activate(cat);
+        tabs.appendChild(btn);
+
+        const div = document.createElement('div');
+        div.id = `tab-${cat}`;
+        div.className = 'tab-content';
+        const ul = document.createElement('ul');
+        files.forEach(f => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = f.url;
+          a.textContent = f.name;
+          a.download = f.name;
+          a.target = '_blank';
+          li.appendChild(a);
+          ul.appendChild(li);
+        });
+        div.appendChild(ul);
+        contents.appendChild(div);
       }
-    });
+      if (tabs.firstChild) tabs.firstChild.click();
+    }
+
+    function activate(cat) {
+      document.querySelectorAll('.tab-button').forEach(b => b.classList.toggle('active', b.textContent === cat));
+      document.querySelectorAll('.tab-content').forEach(div => div.classList.toggle('active', div.id === `tab-${cat}`));
+    }
+
+    function filtrarYOrdenar() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const orden = document.getElementById('sortSelect').value;
+      for (const cat in categorias) {
+        let arr = categorias[cat];
+        arr = arr.filter(f => f.name.toLowerCase().includes(q));
+        arr.sort((a,b) => orden === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+        categorias[cat] = arr;
+      }
+      render();
+    }
+
+    document.getElementById('search').addEventListener('input', filtrarYOrdenar);
+    document.getElementById('sortSelect').addEventListener('change', filtrarYOrdenar);
+
+    (async () => {
+      await explorar();
+      filtrarYOrdenar();
+    })();
   </script>
 </body>
 </html>
