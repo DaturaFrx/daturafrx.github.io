@@ -2,19 +2,20 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DaturaFrx/db</title>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       line-height: 1.6;
       color: #e4e4e7;
       background: #09090b;
-      margin: 0;
       padding: 2rem;
       font-size: 14px;
     }
@@ -32,6 +33,7 @@
       gap: 0.75rem;
       margin-bottom: 1.5rem;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     input, select {
@@ -42,15 +44,13 @@
       color: #e4e4e7;
       font-size: 14px;
       transition: border-color 0.15s ease;
+      flex: 1;
+      min-width: 140px;
     }
 
     input:focus, select:focus {
       outline: none;
       border-color: #3f3f46;
-    }
-
-    input {
-      flex: 1;
     }
 
     .tabs {
@@ -59,7 +59,6 @@
       gap: 0.25rem;
       margin-bottom: 1.5rem;
       border-bottom: 1px solid #27272a;
-      padding-bottom: 0;
     }
 
     .tab-button {
@@ -124,7 +123,6 @@
       color: #fafafa;
     }
 
-    /* Image preview styling */
     .image-preview {
       width: 60px;
       height: 60px;
@@ -180,7 +178,6 @@
     .forum-date {
       font-size: 12px;
       color: #71717a;
-      font-weight: 400;
     }
 
     .forum-content {
@@ -188,6 +185,7 @@
       white-space: pre-wrap;
       line-height: 1.5;
     }
+
     ::-webkit-scrollbar {
       width: 8px;
     }
@@ -203,6 +201,34 @@
 
     ::-webkit-scrollbar-thumb:hover {
       background: #52525b;
+    }
+
+    /* 🔍 Mobile support */
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+        font-size: 13px;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .image-preview {
+        margin-bottom: 0.5rem;
+      }
+
+      .forum-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+      }
     }
   </style>
 </head>
@@ -235,22 +261,17 @@
 
     function fuzzyMatch(text, query) {
       if (!query) return true;
-      
       const textLower = text.toLowerCase();
       const queryLower = query.toLowerCase();
-      
       if (textLower.includes(queryLower)) return true;
-      
       let textIndex = 0;
       let queryIndex = 0;
-      
       while (textIndex < textLower.length && queryIndex < queryLower.length) {
         if (textLower[textIndex] === queryLower[queryIndex]) {
           queryIndex++;
         }
         textIndex++;
       }
-      
       return queryIndex === queryLower.length;
     }
 
@@ -293,18 +314,11 @@
       try {
         const contentResp = await fetch(file.url);
         const content = await contentResp.text();
-        
         const commitsUrl = `https://api.github.com/repos/${usuario}/${repositorio}/commits?path=${file.path}&per_page=1`;
         const commitsResp = await fetch(commitsUrl);
         const commits = await commitsResp.json();
-        
         const lastModified = commits.length > 0 ? new Date(commits[0].commit.committer.date) : new Date();
-        
-        return {
-          ...file,
-          content,
-          lastModified
-        };
+        return { ...file, content, lastModified };
       } catch (error) {
         console.error('Error fetching file:', error);
         return { ...file, content: '', lastModified: new Date() };
@@ -328,26 +342,26 @@
         const div = document.createElement('div');
         div.id = `tab-${cat}`;
         div.className = 'tab-content';
-        
+
         if (cat === 'Forum') {
           const forumFiles = await Promise.all(files.map(fetchFileWithDate));
           forumFiles.sort((a, b) => b.lastModified - a.lastModified);
-          
+
           forumFiles.forEach(file => {
             const post = document.createElement('div');
             post.className = 'forum-post';
-            
+
             const title = document.createElement('div');
             title.className = 'forum-title';
             title.innerHTML = `
               <span>${file.name}</span>
               <span class="forum-date">${file.lastModified.toLocaleDateString()}</span>
             `;
-            
+
             const content = document.createElement('div');
             content.className = 'forum-content';
             content.textContent = file.content;
-            
+
             post.appendChild(title);
             post.appendChild(content);
             div.appendChild(post);
@@ -357,7 +371,7 @@
           files.forEach(f => {
             const li = document.createElement('li');
             li.className = 'file-item';
-            
+
             if (cat === 'Imágenes') {
               const img = document.createElement('img');
               img.src = f.url;
@@ -365,24 +379,24 @@
               img.loading = 'lazy';
               li.appendChild(img);
             }
-            
+
             const fileInfo = document.createElement('div');
             fileInfo.className = 'file-info';
-            
+
             const a = document.createElement('a');
             a.href = f.url;
             a.className = 'file-name';
             a.textContent = f.name;
-            a.download = f.name;
-            a.target = '_blank';
-            
+            a.setAttribute('download', f.name);
+            a.setAttribute('target', '_blank');
+
             fileInfo.appendChild(a);
             li.appendChild(fileInfo);
             ul.appendChild(li);
           });
           div.appendChild(ul);
         }
-        
+
         contents.appendChild(div);
       }
       if (tabs.firstChild) tabs.firstChild.click();
@@ -396,25 +410,14 @@
     async function filtrarYOrdenar() {
       const q = document.getElementById('search').value.toLowerCase();
       const orden = document.getElementById('sortSelect').value;
-      
-      const originalData = {};
+
       for (const cat in categorias) {
-        originalData[cat] = [...categorias[cat]];
+        categorias[cat] = categorias[cat].filter(f => fuzzyMatch(f.name, q));
+        categorias[cat].sort((a, b) =>
+          orden === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
+        );
       }
-      
-      for (const cat in categorias) {
-        categorias[cat] = [];
-      }
-      
-      await explorar();
-      
-      for (const cat in categorias) {
-        let arr = categorias[cat];
-        arr = arr.filter(f => fuzzyMatch(f.name, q));
-        arr.sort((a,b) => orden === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
-        categorias[cat] = arr;
-      }
-      
+
       await render();
     }
 
