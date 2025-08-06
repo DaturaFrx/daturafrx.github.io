@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Exocortex Navigator</title>
+  <title>Navigator</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -71,7 +71,6 @@
       const y = window.scrollY;
       if (y < 80) nav.classList.add('visible');
       else if (y > lastScrollY) nav.classList.remove('visible');
-      // track scroll direction
       lastScrollY = y;
     });
 
@@ -81,7 +80,7 @@
       if (key === 'home') {
         out.innerHTML = `
           <h1 style="text-align:center; margin-top:2rem; color:#fafafa;">
-            Welcome to Exocortex
+            DtrFrx
           </h1>
           <div class="home-grid">
             <div class="card" onclick="location.hash='blackjack'"><h3>Blackjack</h3></div>
