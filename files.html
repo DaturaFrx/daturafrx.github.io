@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DaturaFrx/db</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #e4e4e7;
+      background: #09090b;
+      padding: 2rem;
+      font-size: 14px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #fafafa;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.025em;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    input, select {
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #27272a;
+      background: #18181b;
+      color: #e4e4e7;
+      font-size: 14px;
+      transition: border-color 0.15s ease;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #3f3f46;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #27272a;
+    }
+
+    .tab-button {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: none;
+      color: #71717a;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 6px 6px 0 0;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+
+    .tab-button:hover {
+      color: #d4d4d8;
+      background: #18181b;
+    }
+
+    .tab-button.active {
+      color: #fafafa;
+      background: #18181b;
+    }
+
+    .tab-button.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #fafafa;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    li {
+      margin: 0.5rem 0;
+      padding: 0.25rem 0;
+    }
+
+    a {
+      color: #a1a1aa;
+      text-decoration: none;
+      transition: color 0.15s ease;
+      font-weight: 400;
+    }
+
+    a:hover {
+      color: #fafafa;
+    }
+
+    .image-preview {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin-right: 0.75rem;
+      border: 1px solid #27272a;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem;
+      border-radius: 4px;
+      transition: background-color 0.15s ease;
+    }
+
+    .file-item:hover {
+      background: #18181b;
+    }
+
+    .file-info {
+      flex: 1;
+    }
+
+    .file-name {
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+
+    .file-date {
+      font-size: 12px;
+      color: #71717a;
+    }
+
+    .forum-post {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .forum-title {
+      color: #fafafa;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .forum-date {
+      font-size: 12px;
+      color: #71717a;
+    }
+
+    .forum-content {
+      color: #e4e4e7;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #18181b;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #52525b;
+    }
+
+    /* 🔍 Mobile support */
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+        font-size: 13px;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .image-preview {
+        margin-bottom: 0.5rem;
+      }
+
+      .forum-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>📂 Explorador: DaturaFrx/db</h1>
+  <div class="controls">
+    <input type="text" id="search" placeholder="Buscar archivos..." />
+    <select id="sortSelect">
+      <option value="asc">Ordenar A → Z</option>
+      <option value="desc">Ordenar Z → A</option>
+    </select>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="tab-contents"></div>
+
+  <script>
+    const usuario = 'DaturaFrx';
+    const repositorio = 'db';
+    const apiBase = `https://api.github.com/repos/${usuario}/${repositorio}/contents`;
+    const categorias = { Pins: [], Imágenes: [], Comprimidos: [], Texto: [], Otros: [], Forum: [] };
+    const extensiones = {
+      Imágenes: ['.png','.jpg','.jpeg','.gif','.bmp','.webp','.svg'],
+      Comprimidos: ['.zip','.rar','.7z','.tar','.gz'],
+      Texto: ['.txt','.md','.csv','.json','.xml','.html']
+    };
+
+    const quitarPin = n => n.replace(/@@pin/gi, '');
+    const tienePin = n => /@@pin/i.test(n);
+    const normalizar = s => s.toLowerCase();
+
+    function fuzzyMatch(text, query) {
+      if (!query) return true;
+      const textLower = text.toLowerCase();
+      const queryLower = query.toLowerCase();
+      if (textLower.includes(queryLower)) return true;
+      let textIndex = 0;
+      let queryIndex = 0;
+      while (textIndex < textLower.length && queryIndex < queryLower.length) {
+        if (textLower[textIndex] === queryLower[queryIndex]) {
+          queryIndex++;
+        }
+        textIndex++;
+      }
+      return queryIndex === queryLower.length;
+    }
+
+    function categorizar(file) {
+      const name = file.path.split('/').pop();
+      const display = quitarPin(name);
+      const obj = { 
+        name: display, 
+        url: file.download_url,
+        path: file.path,
+        sha: file.sha
+      };
+
+      if (file.path.startsWith('forum/') && extensiones.Texto.some(ext => normalizar(name).endsWith(ext))) {
+        categorias.Forum.push(obj);
+      } else if (tienePin(name)) {
+        categorias.Pins.push(obj);
+      } else if (extensiones.Imágenes.some(ext => normalizar(name).endsWith(ext))) {
+        categorias.Imágenes.push(obj);
+      } else if (extensiones.Comprimidos.some(ext => normalizar(name).endsWith(ext))) {
+        categorias.Comprimidos.push(obj);
+      } else if (extensiones.Texto.some(ext => normalizar(name).endsWith(ext))) {
+        categorias.Texto.push(obj);
+      } else {
+        categorias.Otros.push(obj);
+      }
+    }
+
+    async function explorar(path = '') {
+      const url = path ? `${apiBase}/${path}` : apiBase;
+      const resp = await fetch(url);
+      const json = await resp.json();
+      for (const item of json) {
+        if (item.type === 'file') categorizar(item);
+        else if (item.type === 'dir') await explorar(item.path);
+      }
+    }
+
+    async function fetchFileWithDate(file) {
+      try {
+        const contentResp = await fetch(file.url);
+        const content = await contentResp.text();
+        const commitsUrl = `https://api.github.com/repos/${usuario}/${repositorio}/commits?path=${file.path}&per_page=1`;
+        const commitsResp = await fetch(commitsUrl);
+        const commits = await commitsResp.json();
+        const lastModified = commits.length > 0 ? new Date(commits[0].commit.committer.date) : new Date();
+        return { ...file, content, lastModified };
+      } catch (error) {
+        console.error('Error fetching file:', error);
+        return { ...file, content: '', lastModified: new Date() };
+      }
+    }
+
+    async function render() {
+      const tabs = document.getElementById('tabs');
+      const contents = document.getElementById('tab-contents');
+      tabs.innerHTML = '';
+      contents.innerHTML = '';
+
+      for (const [cat, files] of Object.entries(categorias)) {
+        if (!files.length) continue;
+        const btn = document.createElement('button');
+        btn.textContent = cat;
+        btn.className = 'tab-button';
+        btn.onclick = () => activate(cat);
+        tabs.appendChild(btn);
+
+        const div = document.createElement('div');
+        div.id = `tab-${cat}`;
+        div.className = 'tab-content';
+
+        if (cat === 'Forum') {
+          const forumFiles = await Promise.all(files.map(fetchFileWithDate));
+          forumFiles.sort((a, b) => b.lastModified - a.lastModified);
+
+          forumFiles.forEach(file => {
+            const post = document.createElement('div');
+            post.className = 'forum-post';
+
+            const title = document.createElement('div');
+            title.className = 'forum-title';
+            title.innerHTML = `
+              <span>${file.name}</span>
+              <span class="forum-date">${file.lastModified.toLocaleDateString()}</span>
+            `;
+
+            const content = document.createElement('div');
+            content.className = 'forum-content';
+            content.textContent = file.content;
+
+            post.appendChild(title);
+            post.appendChild(content);
+            div.appendChild(post);
+          });
+        } else {
+          const ul = document.createElement('ul');
+          files.forEach(f => {
+            const li = document.createElement('li');
+            li.className = 'file-item';
+
+            if (cat === 'Imágenes') {
+              const img = document.createElement('img');
+              img.src = f.url;
+              img.className = 'image-preview';
+              img.loading = 'lazy';
+              li.appendChild(img);
+            }
+
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'file-info';
+
+            const a = document.createElement('a');
+            a.href = f.url;
+            a.className = 'file-name';
+            a.textContent = f.name;
+            a.setAttribute('download', f.name);
+            a.setAttribute('target', '_blank');
+
+            fileInfo.appendChild(a);
+            li.appendChild(fileInfo);
+            ul.appendChild(li);
+          });
+          div.appendChild(ul);
+        }
+
+        contents.appendChild(div);
+      }
+      if (tabs.firstChild) tabs.firstChild.click();
+    }
+
+    function activate(cat) {
+      document.querySelectorAll('.tab-button').forEach(b => b.classList.toggle('active', b.textContent === cat));
+      document.querySelectorAll('.tab-content').forEach(div => div.classList.toggle('active', div.id === `tab-${cat}`));
+    }
+
+    async function filtrarYOrdenar() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const orden = document.getElementById('sortSelect').value;
+
+      for (const cat in categorias) {
+        categorias[cat] = categorias[cat].filter(f => fuzzyMatch(f.name, q));
+        categorias[cat].sort((a, b) =>
+          orden === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
+        );
+      }
+
+      await render();
+    }
+
+    document.getElementById('search').addEventListener('input', filtrarYOrdenar);
+    document.getElementById('sortSelect').addEventListener('change', filtrarYOrdenar);
+
+    (async () => {
+      await explorar();
+      filtrarYOrdenar();
+    })();
+  </script>
+</body>
+</html>
