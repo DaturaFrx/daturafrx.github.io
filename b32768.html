@@ -1,46 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Base32768 Encoder/Decoder</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Base32768 Converter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    * {
-      box-sizing: border-box;
-    }
-    body { 
-      background: #111; 
-      color: #ddd; 
-      font-family: 'Courier New', monospace; 
-      padding: 1rem; 
+    * { box-sizing: border-box; }
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: 'Courier New', monospace;
       margin: 0;
+      padding: 1rem;
       line-height: 1.4;
     }
     .container {
       max-width: 800px;
-      margin: 0 auto;
+      margin: auto;
       padding: 1rem;
     }
     h2 {
       text-align: center;
-      margin-bottom: 1.5rem;
       color: #fff;
+      margin-bottom: 1.5rem;
     }
-    textarea { 
-      width: 100%; 
-      margin: 0.5rem 0; 
-      font-size: 1rem; 
+    textarea {
+      width: 100%;
       background: #222;
       color: #ddd;
       border: 1px solid #444;
-      padding: 1rem;
       border-radius: 4px;
+      padding: 1rem;
+      font-size: 1rem;
       resize: vertical;
       font-family: inherit;
+      margin: 0.5rem 0;
     }
     textarea:focus {
       outline: none;
       border-color: #666;
+    }
+    .stats {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      font-size: 0.9rem;
+      color: #aaa;
     }
     .button-group {
       display: flex;
@@ -49,33 +54,47 @@
       gap: 0.5rem;
       margin: 1rem 0;
     }
-    button { 
-      background: #444; 
-      color: #eee; 
-      padding: 0.75rem 1.25rem; 
+    button, select {
+      background: #444;
+      color: #eee;
       border: none;
       border-radius: 4px;
-      cursor: pointer;
+      padding: 0.6rem 1rem;
       font-size: 1rem;
+      cursor: pointer;
       transition: background 0.2s;
-      flex: 1 1 45%;
-      max-width: 200px;
     }
-    button:hover {
+    button:hover, select:hover {
       background: #555;
     }
     button:active {
       background: #333;
     }
-    pre { 
-      background: #222; 
-      padding: 1rem; 
-      min-height: 4rem; 
-      border-radius: 4px;
+    pre {
+      background: #222;
+      color: #ddd;
       border: 1px solid #444;
+      border-radius: 4px;
+      padding: 1rem;
+      min-height: 4rem;
       white-space: pre-wrap;
       word-break: break-word;
       position: relative;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 0.25rem;
+      right: 0.25rem;
+      background: #444;
+      color: #eee;
+      border: none;
+      border-radius: 3px;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      background: #666;
     }
     .info-toggle {
       cursor: pointer;
@@ -94,29 +113,6 @@
       display: none;
       margin-bottom: 1rem;
     }
-    .stats {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-      font-size: 0.9rem;
-      color: #aaa;
-    }
-    .copy-btn {
-      position: absolute;
-      top: 0.25rem;
-      right: 0.25rem;
-      background: #444;
-      color: #eee;
-      border: none;
-      border-radius: 3px;
-      padding: 0.25rem 0.5rem;
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-    .copy-btn:hover {
-      background: #666;
-    }
-
     @media (min-width: 480px) {
       .stats {
         flex-direction: row;
@@ -128,28 +124,30 @@
 <body>
   <div class="container">
     <h2>Base32768 🔧</h2>
-    
+
     <div class="info-toggle" onclick="toggleInfo()">▶ Info</div>
     <div class="info-content" id="infoBox">
-      <strong>Base32768</strong> uses Unicode characters to encode binary data more efficiently than Base64. 
-      It can represent 15 bits per character instead of 6 bits, making encoded text ~50% shorter.
+      <strong>Base32768</strong> encodes binary data using Unicode characters. It’s more efficient than Base64 by representing 15 bits per character instead of 6, making the output ~50% shorter.
     </div>
-    
-    <textarea id="input" rows="8" placeholder="Enter text to encode or Base32768 text to decode…"></textarea>
-    
+
+    <div class="button-group">
+      <label for="mode">Mode:</label>
+      <select id="mode">
+        <option value="encode">Encode (text → Base32768)</option>
+        <option value="decode">Decode (Base32768 → text)</option>
+      </select>
+      <button onclick="clearFields()">🗑️ Clear</button>
+    </div>
+
+    <textarea id="input" rows="6" placeholder="Type here..."></textarea>
+
     <div class="stats">
       <span id="inputStats">Input: 0 characters, 0 bytes</span>
       <span id="outputStats">Output: 0 characters</span>
     </div>
-    
-    <div class="button-group">
-      <button id="toEncoded">🔒 Encode</button>
-      <button id="toDecoded">🔓 Decode</button>
-      <button id="clear">🗑️ Clear</button>
-    </div>
-    
+
     <h3>Output:</h3>
-    <pre id="output">Ready to encode or decode...
+    <pre id="output">Ready...
       <button class="copy-btn" onclick="copyOutput()">Copy</button>
     </pre>
   </div>
@@ -200,46 +198,52 @@
     const output = document.getElementById('output');
     const inputStats = document.getElementById('inputStats');
     const outputStats = document.getElementById('outputStats');
+    const modeSelector = document.getElementById('mode');
 
-    function updateStats() {
+    input.addEventListener('input', autoConvert);
+    modeSelector.addEventListener('change', autoConvert);
+
+    function autoConvert() {
+      const mode = modeSelector.value;
       const text = input.value;
-      const bytes = new TextEncoder().encode(text).length;
-      inputStats.textContent = `Input: ${text.length} characters, ${bytes} bytes`;
-      const outputText = output.textContent.trim();
-      outputStats.textContent = outputText && !outputText.startsWith('⚠️') && outputText !== 'Ready to encode or decode...'
-        ? `Output: ${outputText.length} characters`
-        : 'Output: 0 characters';
+      let resultText;
+
+      try {
+        if (mode === 'encode') {
+          const encoded = encodeBase32768(new TextEncoder().encode(text));
+          resultText = encoded;
+        } else {
+          const decoded = decodeBase32768(text);
+          resultText = new TextDecoder().decode(decoded);
+        }
+      } catch (err) {
+        resultText = '⚠️ Error: ' + err.message;
+      }
+
+      output.childNodes[0].textContent = resultText + '\n';
+      updateStats();
     }
 
-    document.getElementById('toEncoded').onclick = () => {
-      try {
-        const encoded = encodeBase32768(new TextEncoder().encode(input.value));
-        output.childNodes[0].textContent = encoded + '\n';
-      } catch (err) {
-        output.childNodes[0].textContent = '⚠️ Encode error: ' + err.message + '\n';
-      }
-      updateStats();
-    };
+    function updateStats() {
+      const inputText = input.value;
+      const inputBytes = new TextEncoder().encode(inputText).length;
+      inputStats.textContent = `Input: ${[...inputText].length} characters, ${inputBytes} bytes`;
 
-    document.getElementById('toDecoded').onclick = () => {
-      try {
-        const decoded = decodeBase32768(input.value);
-        const text = new TextDecoder().decode(decoded);
-        output.childNodes[0].textContent = text + '\n';
-      } catch (err) {
-        output.childNodes[0].textContent = '⚠️ Decode error: ' + err.message + '\n';
-      }
-      updateStats();
-    };
+      const out = output.childNodes[0].textContent.trim();
+      outputStats.textContent =
+        out && !out.startsWith('⚠️') && out !== 'Ready...'
+          ? `Output: ${[...out].length} characters`
+          : 'Output: 0 characters';
+    }
 
-    document.getElementById('clear').onclick = () => {
+    function clearFields() {
       input.value = '';
-      output.childNodes[0].textContent = 'Ready to encode or decode...\n';
+      output.childNodes[0].textContent = 'Ready...\n';
       updateStats();
-    };
+    }
 
     function copyOutput() {
-      const text = output.childNodes[0].textContent;
+      const text = output.childNodes[0].textContent.trim();
       navigator.clipboard.writeText(text).then(() => {
         const btn = document.querySelector('.copy-btn');
         btn.textContent = 'Copied!';
@@ -250,12 +254,11 @@
     function toggleInfo() {
       const box = document.getElementById('infoBox');
       const toggle = document.querySelector('.info-toggle');
-      const isVisible = box.style.display === 'block';
-      box.style.display = isVisible ? 'none' : 'block';
-      toggle.textContent = (isVisible ? '▶' : '▼') + ' Info';
+      const visible = box.style.display === 'block';
+      box.style.display = visible ? 'none' : 'block';
+      toggle.textContent = (visible ? '▶' : '▼') + ' Info';
     }
 
-    input.addEventListener('input', updateStats);
     updateStats();
   </script>
 </body>
