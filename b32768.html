@@ -3,21 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <title>Base32768 Encoder/Decoder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body { 
       background: #111; 
       color: #ddd; 
       font-family: 'Courier New', monospace; 
-      padding: 2rem; 
+      padding: 1rem; 
+      margin: 0;
       line-height: 1.4;
     }
     .container {
       max-width: 800px;
       margin: 0 auto;
+      padding: 1rem;
     }
     h2 {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
       color: #fff;
     }
     textarea { 
@@ -37,19 +43,23 @@
       border-color: #666;
     }
     .button-group {
-      text-align: center;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
       margin: 1rem 0;
     }
     button { 
       background: #444; 
       color: #eee; 
-      padding: 0.75rem 1.5rem; 
-      margin: 0 0.5rem;
+      padding: 0.75rem 1.25rem; 
       border: none;
       border-radius: 4px;
       cursor: pointer;
       font-size: 1rem;
       transition: background 0.2s;
+      flex: 1 1 45%;
+      max-width: 200px;
     }
     button:hover {
       background: #555;
@@ -64,21 +74,54 @@
       border-radius: 4px;
       border: 1px solid #444;
       white-space: pre-wrap;
-      word-break: break-all;
+      word-break: break-word;
+      position: relative;
     }
-    .info {
+    .info-toggle {
+      cursor: pointer;
       background: #1a1a2e;
-      padding: 1rem;
-      border-radius: 4px;
-      margin-bottom: 1rem;
+      padding: 0.75rem 1rem;
       border-left: 4px solid #0f3460;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+    .info-content {
+      background: #1a1a2e;
+      padding: 0.75rem 1rem;
+      border-radius: 0 0 4px 4px;
+      border-left: 4px solid #0f3460;
+      display: none;
+      margin-bottom: 1rem;
     }
     .stats {
       display: flex;
-      justify-content: space-between;
-      margin: 0.5rem 0;
+      flex-direction: column;
+      gap: 0.25rem;
       font-size: 0.9rem;
       color: #aaa;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 0.25rem;
+      right: 0.25rem;
+      background: #444;
+      color: #eee;
+      border: none;
+      border-radius: 3px;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      background: #666;
+    }
+
+    @media (min-width: 480px) {
+      .stats {
+        flex-direction: row;
+        justify-content: space-between;
+      }
     }
   </style>
 </head>
@@ -86,7 +129,8 @@
   <div class="container">
     <h2>Base32768 🔧</h2>
     
-    <div class="info">
+    <div class="info-toggle" onclick="toggleInfo()">▶ Info</div>
+    <div class="info-content" id="infoBox">
       <strong>Base32768</strong> uses Unicode characters to encode binary data more efficiently than Base64. 
       It can represent 15 bits per character instead of 6 bits, making encoded text ~50% shorter.
     </div>
@@ -99,21 +143,20 @@
     </div>
     
     <div class="button-group">
-      <button id="toEncoded">🔒 Encode to Base32768</button>
-      <button id="toDecoded">🔓 Decode from Base32768</button>
+      <button id="toEncoded">🔒 Encode</button>
+      <button id="toDecoded">🔓 Decode</button>
       <button id="clear">🗑️ Clear</button>
     </div>
     
     <h3>Output:</h3>
-    <pre id="output">Ready to encode or decode...</pre>
+    <pre id="output">Ready to encode or decode...
+      <button class="copy-btn" onclick="copyOutput()">Copy</button>
+    </pre>
   </div>
 
   <script>
-    // Base32768 implementation
     const BASE32768_ALPHABET = (() => {
       const chars = [];
-      // Use Unicode blocks that are well-supported and don't cause display issues
-      // CJK Unified Ideographs: U+4E00-U+9FFF
       for (let i = 0x4E00; i < 0x4E00 + 32768; i++) {
         chars.push(String.fromCharCode(i));
       }
@@ -122,109 +165,97 @@
 
     function encodeBase32768(data) {
       const result = [];
-      let buffer = 0;
-      let bits = 0;
-      
-      for (let i = 0; i < data.length; i++) {
-        buffer = (buffer << 8) | data[i];
+      let buffer = 0, bits = 0;
+      for (let byte of data) {
+        buffer = (buffer << 8) | byte;
         bits += 8;
-        
         while (bits >= 15) {
-          const index = (buffer >> (bits - 15)) & 0x7FFF;
-          result.push(BASE32768_ALPHABET[index]);
+          result.push(BASE32768_ALPHABET[(buffer >> (bits - 15)) & 0x7FFF]);
           bits -= 15;
         }
       }
-      
-      // Handle remaining bits
       if (bits > 0) {
-        const index = (buffer << (15 - bits)) & 0x7FFF;
-        result.push(BASE32768_ALPHABET[index]);
+        result.push(BASE32768_ALPHABET[(buffer << (15 - bits)) & 0x7FFF]);
       }
-      
       return result.join('');
     }
 
     function decodeBase32768(str) {
       const result = [];
-      let buffer = 0;
-      let bits = 0;
-      
-      for (let i = 0; i < str.length; i++) {
-        const char = str[i];
+      let buffer = 0, bits = 0;
+      for (let char of str) {
         const index = BASE32768_ALPHABET.indexOf(char);
-        
-        if (index === -1) {
-          throw new Error(`Invalid character: ${char} (U+${char.charCodeAt(0).toString(16).toUpperCase()})`);
-        }
-        
+        if (index === -1) throw new Error(`Invalid character: ${char}`);
         buffer = (buffer << 15) | index;
         bits += 15;
-        
         while (bits >= 8) {
-          const byte = (buffer >> (bits - 8)) & 0xFF;
-          result.push(byte);
+          result.push((buffer >> (bits - 8)) & 0xFF);
           bits -= 8;
         }
       }
-      
       return new Uint8Array(result);
     }
 
-    // DOM elements
     const input = document.getElementById('input');
     const output = document.getElementById('output');
     const inputStats = document.getElementById('inputStats');
     const outputStats = document.getElementById('outputStats');
 
-    // Update statistics
     function updateStats() {
       const text = input.value;
       const bytes = new TextEncoder().encode(text).length;
       inputStats.textContent = `Input: ${text.length} characters, ${bytes} bytes`;
-      
-      const outputText = output.textContent;
-      if (outputText && outputText !== 'Ready to encode or decode...' && !outputText.startsWith('⚠️')) {
-        outputStats.textContent = `Output: ${outputText.length} characters`;
-      } else {
-        outputStats.textContent = 'Output: 0 characters';
-      }
+      const outputText = output.textContent.trim();
+      outputStats.textContent = outputText && !outputText.startsWith('⚠️') && outputText !== 'Ready to encode or decode...'
+        ? `Output: ${outputText.length} characters`
+        : 'Output: 0 characters';
     }
-
-    // Event listeners
-    input.addEventListener('input', updateStats);
 
     document.getElementById('toEncoded').onclick = () => {
       try {
-        const text = new TextEncoder().encode(input.value);
-        const encoded = encodeBase32768(text);
-        output.textContent = encoded;
-        updateStats();
+        const encoded = encodeBase32768(new TextEncoder().encode(input.value));
+        output.childNodes[0].textContent = encoded + '\n';
       } catch (err) {
-        output.textContent = '⚠️ Encode error: ' + err.message;
-        updateStats();
+        output.childNodes[0].textContent = '⚠️ Encode error: ' + err.message + '\n';
       }
+      updateStats();
     };
 
     document.getElementById('toDecoded').onclick = () => {
       try {
         const decoded = decodeBase32768(input.value);
         const text = new TextDecoder().decode(decoded);
-        output.textContent = text;
-        updateStats();
+        output.childNodes[0].textContent = text + '\n';
       } catch (err) {
-        output.textContent = '⚠️ Decode error: ' + err.message;
-        updateStats();
+        output.childNodes[0].textContent = '⚠️ Decode error: ' + err.message + '\n';
       }
+      updateStats();
     };
 
     document.getElementById('clear').onclick = () => {
       input.value = '';
-      output.textContent = 'Ready to encode or decode...';
+      output.childNodes[0].textContent = 'Ready to encode or decode...\n';
       updateStats();
     };
 
-    // Initialize stats
+    function copyOutput() {
+      const text = output.childNodes[0].textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 1200);
+      });
+    }
+
+    function toggleInfo() {
+      const box = document.getElementById('infoBox');
+      const toggle = document.querySelector('.info-toggle');
+      const isVisible = box.style.display === 'block';
+      box.style.display = isVisible ? 'none' : 'block';
+      toggle.textContent = (isVisible ? '▶' : '▼') + ' Info';
+    }
+
+    input.addEventListener('input', updateStats);
     updateStats();
   </script>
 </body>
