@@ -5,90 +5,120 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AES-GCM</title>
     <style>
-      :root { color-scheme: dark; --bg:#0b0c0f; --card:#0f1116; --muted:#94a3b8; --text:#e6eef6; --accent:#93c5fd; --ok:#22c55e; --bad:#ef4444; --panel-border:#1f2937; }
-      html,body{height:100%;margin:0;padding:0;background:var(--bg);color:var(--text);font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
-      .wrap{max-width:980px;margin:14px auto;padding:12px;}
+:root {
+  color-scheme: dark;
+  --bg:#0b0c0f;
+  --muted:#94a3b8;
+  --text:#e6eef6;
+  --accent:#93c5fd;
+  --ok:#22c55e;
+  --bad:#ef4444;
+  --panel-border:#1f2937;
+}
 
-      /* Header: desktop shows two columns, mobile stacks and simplifies */
-      header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
-      .hdr-left, .hdr-right { display:flex;flex-direction:column }
-      h1{font-size:18px;margin:0;color:#cfe8ff;font-weight:700}
-      .sub{font-size:13px;color:var(--muted);line-height:1.2}
-      .subSmall{font-size:12px;color:var(--muted)}
+html,body {
+  height:100%;margin:0;padding:0;
+  background:var(--bg);color:var(--text);
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
 
-      .card{background:var(--card);border:1px solid var(--panel-border);border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,0,0,0.35)}
-      .row{display:flex;gap:8px;align-items:center}
-      label.hint{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
-      input[type=text],textarea,select{width:100%;background:rgba(11,12,16,0.9);color:var(--text);border:1px solid var(--panel-border);border-radius:10px;padding:8px;font-family:monospace;font-size:13px}
-      textarea{min-height:84px;resize:vertical}
-      button{background:rgba(11,12,16,0.98);color:var(--text);border:1px solid #334155;border-radius:10px;padding:8px 10px;font-size:13px;cursor:pointer}
-      button:active{transform:translateY(1px)}
-      button.ghost{background:transparent;border:1px dashed #334155}
-      .mono{font-family:monospace;white-space:pre-wrap;word-break:break-all}
-      .hint{color:var(--muted);font-size:12px}
-      .ok{color:var(--ok)}
-      .bad{color:var(--bad)}
-      .sep{height:1px;background:var(--panel-border);margin:10px 0;border-radius:1px}
-      .pill{font-size:12px;border:1px solid var(--panel-border);padding:4px 8px;border-radius:999px;color:var(--muted)}
+.wrap {
+  max-width:980px;margin:14px auto;padding:12px;
+}
 
-      .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
-      .col-6{grid-column:span 6}
-      .col-12{grid-column:span 12}
+header {
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin-bottom:10px
+}
+.hdr-left, .hdr-right { display:flex;flex-direction:column }
+h1{font-size:18px;margin:0;color:#cfe8ff;font-weight:700}
+.sub{font-size:13px;color:var(--muted);line-height:1.2}
+.subSmall{font-size:12px;color:var(--muted)}
 
-      /* PAYLOAD UI — made bolder/larger and clearly visible */
-      .payload {
-        position:relative;
-        background:rgba(9,10,12,0.6);
-        border:1px solid #23303b;
-        border-radius:10px;
-        padding:12px;
-        font-family:monospace;
-        font-size:15px;
-        line-height:1.25;
-        font-weight:700;
-        max-height:220px;
-        overflow:auto;
-        cursor:pointer;
-        user-select:text;
-      }
-      .payload:active{opacity:0.98}
-      .payload .hintSmall{display:block;color:var(--muted);font-size:11px;margin-bottom:6px}
-      .copyToast {
-        position:fixed; left:50%; transform:translateX(-50%); bottom:22px;
-        background:#0f1724;color:var(--text);border:1px solid rgba(255,255,255,0.03);
-        padding:8px 12px;border-radius:999px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.5);opacity:0;pointer-events:none;transition:opacity .18s ease;
-      }
-      .copyToast.show{opacity:1;pointer-events:auto}
+.card {
+  border:1px solid var(--panel-border);
+  border-radius:10px;
+  padding:12px;margin-bottom:12px;
+}
 
-      /* token collapse for mobile to save space */
-      .tokenWrap{display:flex;gap:8px;align-items:center}
-      .tokenBox{flex:1;padding:8px;border-radius:8px;background:rgba(11,12,16,0.6);border:1px solid var(--panel-border);font-family:monospace;font-size:13px;overflow:auto}
-      .tokenToggle{display:none}
+.row{display:flex;gap:8px;align-items:center}
+label.hint{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
 
-      /* compact mobile adjustments for density and an alternate UI layout */
-      @media (max-width:720px){
-        .wrap{padding:8px;margin:8px auto}
-        header{flex-direction:column;align-items:flex-start;gap:8px}
-        .hdr-right{align-self:stretch}
-        h1{font-size:16px}
-        .sub{font-size:13px}
-        .subSmall{font-size:12px}
-        .subSmall.right{font-size:13px}
+input[type=text],textarea,select {
+  width:100%;background:none;color:var(--text);
+  border:1px solid var(--panel-border);border-radius:8px;
+  padding:10px;font-family:monospace;font-size:14px
+}
+textarea{min-height:90px;resize:vertical}
 
-        /* hide the long token by default on mobile; show the small toggle */
-        .tokenBox{display:none}
-        .tokenToggle{display:inline-block}
+button {
+  flex:1;
+  background:none;color:var(--text);
+  border:1px solid #334155;border-radius:8px;
+  padding:10px;font-size:14px;cursor:pointer
+}
+button:active{transform:translateY(1px)}
+button.ghost{border:1px dashed #334155}
 
-        .grid{grid-template-columns:1fr}
-        .col-6{grid-column:span 1}
-        .payload{font-size:16px; font-weight:800; max-height:180px; padding:10px}
-        .card{padding:10px;border-radius:10px}
-        input[type=text],textarea{font-size:15px;padding:10px;border-radius:8px}
-        button{padding:10px;border-radius:10px;font-size:14px}
-      }
+.mono{font-family:monospace;white-space:pre-wrap;word-break:break-word}
+.hint{color:var(--muted);font-size:12px}
+.ok{color:var(--ok)}
+.bad{color:var(--bad)}
+.sep{height:1px;background:var(--panel-border);margin:10px 0}
+.pill{font-size:12px;border:1px solid var(--panel-border);padding:4px 8px;border-radius:999px;color:var(--muted)}
 
-      footer{font-size:12px;color:var(--muted);margin-top:8px}
-    </style>
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
+.col-6{grid-column:span 6}
+.col-12{grid-column:span 12}
+
+/* Payload block: visible, bold, copyable */
+.payload {
+  font-family:monospace;
+  font-size:15px;line-height:1.3;font-weight:600;
+  border:1px solid var(--panel-border);
+  border-radius:8px;padding:12px;
+  overflow:auto;cursor:pointer;user-select:text;
+}
+.payload:active{opacity:0.96}
+
+.copyToast {
+  position:fixed; left:50%; transform:translateX(-50%); bottom:22px;
+  background:#0f1724;color:var(--text);
+  border:1px solid rgba(255,255,255,0.05);
+  padding:8px 12px;border-radius:999px;
+  font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.5);
+  opacity:0;pointer-events:none;transition:opacity .18s ease;
+}
+.copyToast.show{opacity:1;pointer-events:auto}
+
+/* Token wrap — prevent vertical column collapse */
+.tokenWrap{display:flex;flex-direction:column;gap:6px}
+.tokenBox {
+  padding:8px;border-radius:6px;
+  border:1px solid var(--panel-border);
+  font-family:monospace;font-size:13px;
+  white-space:nowrap;overflow-x:auto;
+}
+.tokenToggle{display:none}
+
+/* Mobile adjustments */
+@media (max-width:720px){
+  .wrap{padding:8px;margin:8px auto}
+  header{flex-direction:column;align-items:flex-start;gap:8px}
+  h1{font-size:16px}
+  .sub{font-size:13px}
+  .subSmall{font-size:12px}
+
+  .grid{grid-template-columns:1fr}
+  .col-6{grid-column:span 1}
+
+  .payload{font-size:16px;font-weight:700;max-height:200px;padding:10px}
+  .card{padding:10px}
+  input[type=text],textarea{font-size:15px;padding:10px}
+  button{padding:10px;font-size:15px}
+}
+footer{font-size:12px;color:var(--muted);margin-top:8px}
+</style>
   </head>
   <body>
     <div class="wrap">
