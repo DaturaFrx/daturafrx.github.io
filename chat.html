@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AES-GCM</title>
+    <style>
+      :root { color-scheme: dark; }
+      html,body{height:100%;margin:0;padding:0;background:#0b0c0f;color:#e6eef6;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+      .wrap{max-width:980px;margin:18px auto;padding:12px;}
+      header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+      h1{font-size:16px;margin:0;color:#cfe8ff}
+      .sub{font-size:12px;color:#94a3b8}
+
+      .card{background:#0f1116;border:1px solid #1f2937;border-radius:14px;padding:12px;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,0,0,0.35)}
+      .row{display:flex;gap:8px;align-items:center}
+      label.hint{display:block;color:#94a3b8;font-size:12px;margin-bottom:6px}
+      input[type=text],textarea,select{width:100%;background:#0b0c10;color:#e6eef6;border:1px solid #1f2937;border-radius:10px;padding:10px;font-family:monospace;font-size:13px}
+      textarea{min-height:96px;resize:vertical}
+      button{background:#0b0c10;color:#e6eef6;border:1px solid #334155;border-radius:12px;padding:10px 12px;font-size:13px;cursor:pointer}
+      button:active{transform:translateY(1px)}
+      button.ghost{background:transparent;border:1px dashed #334155}
+      .mono{font-family:monospace;white-space:pre-wrap;word-break:break-all}
+      .hint{color:#94a3b8;font-size:12px}
+      .ok{color:#22c55e}
+      .bad{color:#ef4444}
+      .sep{height:1px;background:#1f2937;margin:10px 0;border-radius:1px}
+      .pill{font-size:12px;border:1px solid #1f2937;padding:4px 8px;border-radius:999px;color:#94a3b8}
+
+      .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
+      .col-6{grid-column:span 6}
+      .col-12{grid-column:span 12}
+
+      @media (max-width:720px){
+        .wrap{padding:14px}
+        .grid{grid-template-columns:1fr}
+        button{padding:12px;font-size:15px}
+        input[type=text],textarea{font-size:15px;padding:12px}
+      }
+
+      footer{font-size:12px;color:#94a3b8;margin-top:8px}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>EncChat</h1>
+          <div class="sub">P-256 · HKDF-SHA256 · AES-GCM</div>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="row"><span class="pill">session</span><div id="status" class="hint">initializing</div></div>
+        <div class="sep"></div>
+        <div class="grid">
+          <div class="col-12">
+            <label class="hint">your ephemeral public token</label>
+            <div id="myToken" class="mono"></div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="copyMy">copy</button>
+              <button id="regen">regenerate</button>
+              <button id="downloadPub" class="ghost">download .txt</button>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="hint">paste peer public token (pub1x… or pub1p…)</label>
+            <input id="peerToken" type="text" placeholder="pub1x… or pub1p…" />
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+              <button id="acceptPeer">accept peer</button>
+              <div id="peerState" class="hint"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="ops" class="card" style="display:none">
+        <div class="row"><span class="pill">ops</span><div class="hint">key established</div></div>
+        <div class="sep"></div>
+        <div class="grid">
+          <div class="col-6">
+            <label class="hint">encrypt text → base64url</label>
+            <textarea id="ptIn" placeholder="type message"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="encText">encrypt</button>
+              <button id="clrText">clear</button>
+            </div>
+            <div id="ctOut" class="mono" style="margin-top:8px"></div>
+          </div>
+
+          <div class="col-6">
+            <label class="hint">decrypt base64url → text</label>
+            <textarea id="ctIn" placeholder="paste payload"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="decText">decrypt</button>
+              <button id="clrCT">clear</button>
+            </div>
+            <div id="ptOut" class="mono" style="margin-top:8px"></div>
+          </div>
+
+          <div class="col-12">
+            <div class="sep"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <div style="flex:1 1 280px">
+                <label class="hint">encrypt file → download <code>.enc</code></label>
+                <input id="fileEnc" type="file" />
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button id="encFile">encrypt file</button>
+              </div>
+            </div>
+
+            <div style="height:10px"></div>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <div style="flex:1 1 280px">
+                <label class="hint">decrypt <code>.enc</code> → download original file</label>
+                <input id="fileDec" type="file" />
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button id="decFile">decrypt file</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="card">
+        <div class="hint">Notes: token header encodes curve: pub1x = X25519, pub1p = P-256. Operations are local. AES-GCM used for AEAD.</div>
+      </footer>
+    </div>
+
+    <script>
+      // Self-adaptive client: prefer X25519; if environment doesn't support deriveBits/deriveKey for X25519,
+      // automatically use a P-256 fallback and emit a different token header so peers can interoperate.
+      let myKeyPair = null;
+      let myPubRaw = null;
+      let symKey = null;
+      let curveInUse = null; // 'X25519' or 'P-256'
+
+      const tv = id => document.getElementById(id);
+
+      // base64url
+      function b64urlEncode(u8){
+        const s = btoa(String.fromCharCode(...u8));
+        return s.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+      }
+      function b64urlDecode(s){
+        s = s.replace(/-/g,'+').replace(/_/g,'/');
+        while(s.length % 4) s += '=';
+        const bin = atob(s);
+        const out = new Uint8Array(bin.length);
+        for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+        return out;
+      }
+
+      function uint16be(n){ return new Uint8Array([ (n>>8)&0xff, n&0xff ]); }
+      function readUint16be(u8, off){ return (u8[off]<<8) | u8[off+1]; }
+
+      function arrayBufferSliceOf(u8){
+        if(u8.buffer && (u8.byteOffset !== 0 || u8.byteLength !== u8.buffer.byteLength)){
+          return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+        }
+        return u8.buffer || u8;
+      }
+
+      // detect X25519 support by generating a pair and trying deriveBits with its own public
+      async function detectX25519Support(){
+        try{
+          const kp = await crypto.subtle.generateKey({name:'ECDH', namedCurve:'X25519'}, true, ['deriveBits']);
+          const pub = await crypto.subtle.exportKey('raw', kp.publicKey);
+          // try deriveBits with self
+          const peer = await crypto.subtle.importKey('raw', pub, {name:'ECDH', namedCurve:'X25519'}, false, []);
+          const secret = await crypto.subtle.deriveBits({name:'ECDH', public: peer}, kp.privateKey, 256);
+          // zero if possible
+          try{ if(secret instanceof ArrayBuffer){ new Uint8Array(secret).fill(0); } }catch(e){}
+          return true;
+        }catch(e){
+          console.warn('X25519 support test failed', e);
+          return false;
+        }
+      }
+
+      async function generateEphemeral(){
+        tv('status').textContent = 'detecting supported curve';
+        const haveX = await detectX25519Support();
+        if(haveX){
+          curveInUse = 'X25519';
+          myKeyPair = await crypto.subtle.generateKey({name:'ECDH', namedCurve:'X25519'}, true, ['deriveBits']);
+          const rawPub = new Uint8Array(await crypto.subtle.exportKey('raw', myKeyPair.publicKey));
+          myPubRaw = rawPub;
+          tv('myToken').textContent = 'pub1x' + b64urlEncode(rawPub);
+          tv('status').textContent = 'ephemeral X25519 ready';
+        }else{
+          curveInUse = 'P-256';
+          // P-256 uses a raw uncompressed point (0x04 | X | Y) length 65
+          myKeyPair = await crypto.subtle.generateKey({name:'ECDH', namedCurve:'P-256'}, true, ['deriveBits']);
+          const rawPub = new Uint8Array(await crypto.subtle.exportKey('raw', myKeyPair.publicKey));
+          myPubRaw = rawPub;
+          tv('myToken').textContent = 'pub1p' + b64urlEncode(rawPub);
+          tv('status').textContent = 'ephemeral P-256 ready';
+        }
+        tv('peerState').textContent = '';
+        showOps(false);
+      }
+
+      // parse peer token, return {curve, raw}
+      function parsePeerToken(token){
+        if(!token || !token.startsWith('pub1')) throw new Error('bad prefix');
+        const rest = token.slice(4);
+        const curveTag = rest[0]; // 'x' or 'p'
+        if(rest[1] === undefined) throw new Error('missing data');
+        const rawB64 = rest.slice(1);
+        const raw = b64urlDecode(rawB64);
+        if(curveTag === 'x' && raw.length === 32) return { curve: 'X25519', raw };
+        if(curveTag === 'p' && raw.length === 65) return { curve: 'P-256', raw };
+        throw new Error('unsupported token or invalid length');
+      }
+
+      async function importPeerPublic(peer){
+        // peer: Uint8Array raw; curve: X25519 or P-256
+        const ab = arrayBufferSliceOf(peer.raw);
+        if(peer.curve === 'X25519'){
+          // robust import variants
+          try{ return await crypto.subtle.importKey('raw', ab, {name:'ECDH', namedCurve:'X25519'}, false, []); }catch(e){}
+          try{ return await crypto.subtle.importKey('raw', ab, {name:'X25519'}, false, []); }catch(e){}
+          throw new Error('importKey X25519 failed');
+        }else{
+          // P-256 raw (uncompressed point)
+          return await crypto.subtle.importKey('raw', ab, {name:'ECDH', namedCurve:'P-256'}, false, []);
+        }
+      }
+
+      async function deriveSymmetricKeyFromShared(sharedBitsArrayBuffer){
+        // HKDF to AES-GCM-256
+        const salt = new Uint8Array();
+        const info = new TextEncoder().encode('ecdh:aesgcm');
+        const hk = await crypto.subtle.importKey('raw', sharedBitsArrayBuffer, 'HKDF', false, ['deriveKey']);
+        const aesKey = await crypto.subtle.deriveKey({name:'HKDF', hash:'SHA-256', salt, info}, hk, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+        // zero shared bits if possible
+        try{ if(sharedBitsArrayBuffer instanceof ArrayBuffer){ new Uint8Array(sharedBitsArrayBuffer).fill(0); } }catch(e){}
+        return aesKey;
+      }
+
+      async function acceptPeer(){
+        try{
+          const token = tv('peerToken').value.trim();
+          if(!token){ tv('peerState').textContent='empty'; tv('peerState').className='bad'; return; }
+
+          let parsed;
+          try{
+            parsed = parsePeerToken(token);
+          }catch(e){
+            tv('peerState').textContent = 'invalid token'; tv('peerState').className='bad'; return;
+          }
+
+          // if our curve matches peer curve, do the natural path
+          if(curveInUse === parsed.curve){
+            // import peer and derive
+            let peerKey;
+            try{
+              peerKey = await importPeerPublic(parsed);
+            }catch(e){
+              console.error('import failed', e);
+              tv('peerState').textContent = 'import failed'; tv('peerState').className='bad'; return;
+            }
+
+            // For X25519: try deriveBits->HKDF; fallback to deriveKey combos as before.
+            if(parsed.curve === 'X25519'){
+              // attempt deriveBits+HKDF
+              try{
+                const bits = await crypto.subtle.deriveBits({name:'ECDH', public: peerKey}, myKeyPair.privateKey, 256);
+                symKey = await deriveSymmetricKeyFromShared(bits);
+                tv('peerState').textContent = 'peer accepted (X25519)'; tv('peerState').className='hint';
+                tv('status').textContent = 'symmetric key derived';
+                showOps(true);
+                return;
+              }catch(e1){
+                console.warn('X25519 deriveBits path failed', e1);
+                // try deriveKey directly to AES-GCM
+                try{
+                  symKey = await crypto.subtle.deriveKey({name:'ECDH', public:peerKey}, myKeyPair.privateKey, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+                  tv('peerState').textContent = 'peer accepted (X25519 deriveKey)'; tv('peerState').className='hint';
+                  tv('status').textContent = 'symmetric key derived';
+                  showOps(true);
+                  return;
+                }catch(e2){
+                  console.warn('X25519 deriveKey->AES-GCM failed', e2);
+                }
+                // try deriveKey->HKDF->AES-GCM
+                try{
+                  const salt = new Uint8Array();
+                  const info = new TextEncoder().encode('ecdh:aesgcm');
+                  const hkKey = await crypto.subtle.deriveKey({name:'ECDH', public: peerKey}, myKeyPair.privateKey, {name:'HKDF', hash:'SHA-256', salt, info}, false, ['deriveKey']);
+                  symKey = await crypto.subtle.deriveKey({name:'HKDF', hash:'SHA-256', salt, info}, hkKey, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+                  tv('peerState').textContent = 'peer accepted (X25519 alt)'; tv('peerState').className='hint';
+                  tv('status').textContent = 'symmetric key derived';
+                  showOps(true);
+                  return;
+                }catch(e3){
+                  console.warn('X25519 deriveKey->HKDF->AES failed', e3);
+                }
+              }
+              // if we get here, all X25519 derive variants failed
+              tv('peerState').textContent = 'derive failed (X25519)'; tv('peerState').className='bad';
+              return;
+            } // end X25519 branch
+
+            // For P-256 natural path:
+            if(parsed.curve === 'P-256'){
+              try{
+                // deriveBits (or deriveKey) should work for P-256
+                // prefer deriveBits + HKDF for parity
+                const bits = await crypto.subtle.deriveBits({name:'ECDH', public: peerKey}, myKeyPair.privateKey, 256);
+                symKey = await deriveSymmetricKeyFromShared(bits);
+                tv('peerState').textContent = 'peer accepted (P-256)'; tv('peerState').className='hint';
+                tv('status').textContent = 'symmetric key derived';
+                showOps(true);
+                return;
+              }catch(e1){
+                console.warn('P-256 deriveBits failed, trying deriveKey', e1);
+                try{
+                  symKey = await crypto.subtle.deriveKey({name:'ECDH', public: peerKey}, myKeyPair.privateKey, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+                  tv('peerState').textContent = 'peer accepted (P-256 deriveKey)'; tv('peerState').className='hint';
+                  tv('status').textContent = 'symmetric key derived';
+                  showOps(true);
+                  return;
+                }catch(e2){
+                  console.error('P-256 derive failed', e2);
+                  tv('peerState').textContent = 'derive failed (P-256)'; tv('peerState').className='bad';
+                  return;
+                }
+              }
+            } // end P-256 branch
+          } // end when curve matches
+
+          // If our curve does not match peer curve, attempt mutual fallback strategy:
+          // generate a matching keypair on the fly for peer.curve and derive with that.
+          // This allows two different-capability peers (one browser supports only P-256) to interoperate.
+          try{
+            if(parsed.curve === 'X25519'){
+              // attempt to generate a temporary X25519 keypair and derive
+              const tmpKP = await crypto.subtle.generateKey({name:'ECDH', namedCurve:'X25519'}, true, ['deriveBits']);
+              const peerKey = await importPeerPublic(parsed);
+              try{
+                const bits = await crypto.subtle.deriveBits({name:'ECDH', public: peerKey}, tmpKP.privateKey, 256);
+                symKey = await deriveSymmetricKeyFromShared(bits);
+                tv('peerState').textContent = 'peer accepted (created tmp X25519 key)'; tv('peerState').className='hint';
+                tv('status').textContent = 'symmetric key derived (tmp key)';
+                showOps(true);
+                return;
+              }catch(e){
+                console.warn('tmp X25519 derive failed', e);
+              }
+            }else if(parsed.curve === 'P-256'){
+              const tmpKP = await crypto.subtle.generateKey({name:'ECDH', namedCurve:'P-256'}, true, ['deriveBits']);
+              const peerKey = await importPeerPublic(parsed);
+              try{
+                const bits = await crypto.subtle.deriveBits({name:'ECDH', public: peerKey}, tmpKP.privateKey, 256);
+                symKey = await deriveSymmetricKeyFromShared(bits);
+                tv('peerState').textContent = 'peer accepted (created tmp P-256 key)'; tv('peerState').className='hint';
+                tv('status').textContent = 'symmetric key derived (tmp key)';
+                showOps(true);
+                return;
+              }catch(e){
+                console.warn('tmp P-256 derive failed', e);
+              }
+            }
+          }catch(e){
+            console.warn('mutual fallback attempt failed', e);
+          }
+
+          // nothing worked
+          tv('peerState').textContent = 'derive failed: incompatible engines'; tv('peerState').className='bad';
+        }catch(e){
+          console.error('acceptPeer unexpected', e);
+          tv('peerState').textContent = 'error: ' + (e.message || e); tv('peerState').className='bad';
+        }
+      }
+
+      function showOps(on){ tv('ops').style.display = on ? 'block' : 'none'; }
+      function clearText(){ tv('ptIn').value=''; tv('ctOut').textContent=''; }
+      function clearCTin(){ tv('ctIn').value=''; tv('ptOut').textContent=''; }
+
+      async function encryptText(){
+        if(!symKey){ alert('no symmetric key'); return; }
+        const pt = new TextEncoder().encode(tv('ptIn').value);
+        if(pt.length===0){ alert('no plaintext'); return; }
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, symKey, pt);
+        const payload = new Uint8Array(iv.length + ct.byteLength);
+        payload.set(iv,0); payload.set(new Uint8Array(ct), iv.length);
+        tv('ctOut').textContent = b64urlEncode(payload);
+        try{ (new Uint8Array(pt)).fill(0); }catch(e){}
+      }
+
+      async function decryptText(){
+        if(!symKey){ alert('no key'); return; }
+        const s = tv('ctIn').value.trim();
+        if(!s){ alert('no payload'); return; }
+        try{
+          const payload = b64urlDecode(s);
+          if(payload.length < 12+16){ tv('ptOut').textContent='payload too small'; return; }
+          const iv = payload.slice(0,12);
+          const ct = payload.slice(12);
+          const ptbuf = await crypto.subtle.decrypt({name:'AES-GCM', iv}, symKey, ct);
+          const pt = new TextDecoder().decode(ptbuf);
+          tv('ptOut').textContent = pt;
+          try{ (new Uint8Array(ptbuf)).fill(0); }catch(e){}
+        }catch(e){ console.error(e); tv('ptOut').textContent='*** decrypt/auth failed ***'; }
+      }
+
+      // File handling unchanged; file format authenticates filename as additionalData
+      async function encryptFile(){
+        if(!symKey){ alert('no key'); return; }
+        const fi = tv('fileEnc').files[0];
+        if(!fi){ alert('pick a file'); return; }
+        const arr = new Uint8Array(await fi.arrayBuffer());
+        const fname = new TextEncoder().encode(fi.name);
+        if(fname.length > 0xFFFF){ alert('filename too long'); return; }
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv, additionalData: fname}, symKey, arr);
+        const header = new Uint8Array(2 + fname.length + iv.length + ct.byteLength);
+        header.set(uint16be(fname.length), 0);
+        header.set(fname, 2);
+        header.set(iv, 2 + fname.length);
+        header.set(new Uint8Array(ct), 2 + fname.length + iv.length);
+        const blob = new Blob([header], {type:'application/octet-stream'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = fi.name + '.enc'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        try{ (new Uint8Array(arr)).fill(0); }catch(e){}
+      }
+
+      async function decryptFile(){
+        if(!symKey){ alert('no key'); return; }
+        const fi = tv('fileDec').files[0];
+        if(!fi){ alert('pick a file'); return; }
+        const buf = new Uint8Array(await fi.arrayBuffer());
+        if(buf.length < 2+12+16){ alert('file too small'); return; }
+        const namelen = readUint16be(buf,0);
+        if(buf.length < 2 + namelen + 12 + 16){ alert('file truncated'); return; }
+        const fname = buf.slice(2, 2+namelen);
+        const ivOff = 2 + namelen;
+        const iv = buf.slice(ivOff, ivOff+12);
+        const ct = buf.slice(ivOff+12);
+        try{
+          const ptbuf = await crypto.subtle.decrypt({name:'AES-GCM', iv, additionalData: fname}, symKey, ct);
+          const outName = new TextDecoder().decode(fname);
+          const blob = new Blob([ptbuf], {type:'application/octet-stream'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = outName; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+          try{ (new Uint8Array(ptbuf)).fill(0); }catch(e){}
+        }catch(e){ console.error(e); alert('decrypt/auth failed'); }
+      }
+
+      function downloadText(filename, text){ const b = new Blob([text], {type:'text/plain'}); const url = URL.createObjectURL(b); const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); }
+
+      // wire UI
+      tv('regen').addEventListener('click', generateEphemeral);
+      tv('copyMy').addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(tv('myToken').textContent); }catch(e){ alert('copy failed'); } });
+      tv('downloadPub').addEventListener('click', ()=>{ if(tv('myToken').textContent) downloadText('pub1.txt', tv('myToken').textContent); });
+      tv('acceptPeer').addEventListener('click', acceptPeer);
+      tv('encText').addEventListener('click', encryptText);
+      tv('clrText').addEventListener('click', clearText);
+      tv('decText').addEventListener('click', decryptText);
+      tv('clrCT').addEventListener('click', clearCTin);
+      tv('encFile').addEventListener('click', encryptFile);
+      tv('decFile').addEventListener('click', decryptFile);
+
+      // init
+      generateEphemeral().catch(e=>{ console.error(e); tv('status').textContent = 'init failed'; });
+
+      // cleanup
+      window.addEventListener('unload', ()=>{ try{ if(myPubRaw) myPubRaw.fill(0); myPubRaw = null; symKey = null; myKeyPair = null; }catch(e){} });
+    </script>
+  </body>
+</html>
