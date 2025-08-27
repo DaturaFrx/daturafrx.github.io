@@ -38,10 +38,10 @@ h1{font-size:18px;margin:0;color:#cfe8ff;font-weight:700}
 .card {
   border:1px solid var(--panel-border);
   border-radius:10px;
-  padding:12px;margin-bottom:12px;
+  padding:14px;margin-bottom:16px;
 }
 
-.row{display:flex;gap:8px;align-items:center}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 label.hint{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
 
 input[type=text],textarea,select {
@@ -64,20 +64,22 @@ button.ghost{border:1px dashed #334155}
 .hint{color:var(--muted);font-size:12px}
 .ok{color:var(--ok)}
 .bad{color:var(--bad)}
-.sep{height:1px;background:var(--panel-border);margin:10px 0}
+.sep{height:1px;background:var(--panel-border);margin:12px 0}
 .pill{font-size:12px;border:1px solid var(--panel-border);padding:4px 8px;border-radius:999px;color:var(--muted)}
 
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
 .col-6{grid-column:span 6}
 .col-12{grid-column:span 12}
 
-/* Payload block: visible, bold, copyable */
+/* Payload block */
 .payload {
   font-family:monospace;
   font-size:15px;line-height:1.3;font-weight:600;
   border:1px solid var(--panel-border);
   border-radius:8px;padding:12px;
-  overflow:auto;cursor:pointer;user-select:text;
+  overflow-wrap:break-word; /* ensures no horizontal scrolling */
+  word-break:break-all; 
+  cursor:pointer;user-select:text;
 }
 .payload:active{opacity:0.96}
 
@@ -91,15 +93,24 @@ button.ghost{border:1px dashed #334155}
 }
 .copyToast.show{opacity:1;pointer-events:auto}
 
-/* Token wrap — prevent vertical column collapse */
+/* Token wrap — no horizontal scroll, keys wrap inside */
 .tokenWrap{display:flex;flex-direction:column;gap:6px}
 .tokenBox {
   padding:8px;border-radius:6px;
   border:1px solid var(--panel-border);
   font-family:monospace;font-size:13px;
-  white-space:nowrap;overflow-x:auto;
+  overflow-wrap:break-word;word-break:break-all;
 }
 .tokenToggle{display:none}
+
+/* Encryption/Decryption blocks — vertical on all screens */
+.encrypt-block, .decrypt-block {
+  display:block;
+  margin-bottom:20px;
+  padding:14px;
+  border:1px solid var(--panel-border);
+  border-radius:10px;
+}
 
 /* Mobile adjustments */
 @media (max-width:720px){
@@ -113,7 +124,7 @@ button.ghost{border:1px dashed #334155}
   .col-6{grid-column:span 1}
 
   .payload{font-size:16px;font-weight:700;max-height:200px;padding:10px}
-  .card{padding:10px}
+  .card{padding:10px;margin-bottom:14px}
   input[type=text],textarea{font-size:15px;padding:10px}
   button{padding:10px;font-size:15px}
 }
