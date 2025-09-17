@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>P2P Chat - Fixed</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
+<style>
+body { font-family: sans-serif; margin:0; padding:0; display:flex; height:100vh; }
+.container { flex:1; display:flex; flex-direction:column; padding:12px; }
+header { border-bottom:1px solid #ccc; padding-bottom:8px; margin-bottom:8px; }
+.subtitle { font-size:0.9em; color:#666; }
+.user-info, .connection-section, .message-input-container { margin:8px 0; }
+.message-area { flex:1; overflow:auto; border:1px solid #ddd; padding:6px; }
+.message.sent { text-align:right; color:#0b74de; }
+.message.received { text-align:left; color:#333; }
+.timestamp { font-size:0.7em; color:#666; }
+#jumpButton { position:fixed; bottom:12px; right:12px; display:none; }
+.toast-notification { visibility:hidden; background:#333; color:#fff; text-align:center; border-radius:4px; padding:8px; position:fixed; top:12px; right:12px; z-index:1; }
+.toast-notification.show { visibility:visible; }
+.connection-status { padding:4px; font-size:0.9em; }
+.connection-status.disconnected { color:#b91c1c; }
+#sidebar { width:0; transition:0.3s; overflow-x:hidden; background:#111; color:#eee; position:fixed; right:0; top:0; bottom:0; z-index:2; padding:12px; font-size:12px; display:none; }
+#sidebar.open { display:block; width:40%; }
+#toggleSidebar { position:fixed; top:12px; right:12px; z-index:3; }
+.log-info { color:#0b74de; }
+.log-warn { color:#a16207; }
+.log-error { color:#b91c1c; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="toast" class="toast-notification">ID copied</div>
+  <button id="toggleSidebar">Logs</button>
+  <header><h1>P2P Chat</h1><p class="subtitle">Peer-to-Peer Encrypted Messaging</p></header>
+  <div class="setup-container" id="setupPanel">
+    <h3>User Setup</h3>
+    <input type="text" id="usernameInput" placeholder="Enter name" required>
+    <button id="saveProfileBtn">Save Profile</button>
+  </div>
+  <div id="mainPanel" style="display:none; flex:1; display:flex; flex-direction:column;">
+    <div class="user-info">
+      <h3>Your ID: <span id="myId">Generating...</span> <button id="copyIdBtn">Copy</button></h3>
+      <h3>Username: <span id="displayUsername"></span></h3>
+      <div id="status" class="connection-status disconnected">Not connected</div>
+    </div>
+    <div class="connection-section">
+      <h3>Connect to Peer</h3>
+      <input type="text" id="peerIdInput" placeholder="Enter peer ID">
+      <button id="connectBtn">Connect</button>
+      <button id="cancelConnectionBtn" style="display:none;">Cancel</button>
+    </div>
+    <div id="messageArea" class="message-area"></div>
+    <div class="message-input-container">
+      <input type="text" id="messageInput" placeholder="Type message">
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+  <button id="jumpButton">Jump to Messages</button>
+</div>
+<div id="sidebar"><h4>Debug Log</h4><div id="debugArea"></div></div>
+<script>
+// state
+let peer=null, conn=null, myId=null, desiredId=null, idStable=false, username='';
+let keyPair=null, derivedKey=null, curveName='P-256';
+const outgoingQueue=[];
+const ICE_SERVERS=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun2.l.google.com:19302'}];
+// logging
+function now(){return new Date().toISOString();}
+function appendLog(level,msg){
+  const el=document.getElementById('debugArea');
+  const line=document.createElement('div');
+  line.className=level==='INFO'?'log-info':(level==='WARN'?'log-warn':'log-error');
+  line.textContent=`[${now()}] [${level}] ${msg}`;
+  el.appendChild(line);el.scrollTop=el.scrollHeight;
+  console.log(`[${level}] ${msg}`);
+}
+function logInfo(m){appendLog('INFO',m);}
+function logWarn(m){appendLog('WARN',m);}
+function logError(m){appendLog('ERROR',m);}
+// UI helpers
+function showToast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+function updateConnectionStatus(t){const el=document.getElementById('status');el.textContent=t;el.classList.remove('disconnected');if(t==='Disconnected'||t==='Not connected'||t==='Error')el.classList.add('disconnected');}
+// id
+function generatePersistentId(u){let seed=localStorage.getItem('p2p_seed');if(!seed){seed=Math.random().toString(36).slice(2,10);localStorage.setItem('p2p_seed',seed);}
+const combined=`${u}:${seed}`;let h=0;for(let i=0;i<combined.length;i++){h=((h<<5)-h)+combined.charCodeAt(i);h|=0;}return `user-${Math.abs(h).toString(16)}`;}
+// crypto
+async function selectBestCurve(){
+  // Try X25519 first (most secure and efficient)
+  if('X25519' in crypto.subtle){
+    try{
+      const testKey=await crypto.subtle.generateKey({name:'X25519'},false,['deriveBits']);
+      curveName='X25519';logInfo('Using curve X25519');return;
+    }catch(e){logWarn('X25519 failed: '+e.message);}
+  }
+  
+  // Fallback to ECDH curves
+  const curves=['P-256','P-384'];
+  for(const curve of curves){
+    try{
+      const testKey=await crypto.subtle.generateKey({name:'ECDH',namedCurve:curve},false,['deriveBits']);
+      curveName=curve;logInfo('Using curve '+curveName);return;
+    }catch(e){logWarn('Curve '+curve+' failed: '+e.message);}
+  }
+  throw new Error('No working curves found');
+}
+async function generateKeyPair(){logInfo('Generating key pair on curve '+curveName);
+  if(curveName==='X25519'){
+    keyPair=await crypto.subtle.generateKey({name:'X25519'},true,['deriveBits']);
+  }else{
+    keyPair=await crypto.subtle.generateKey({name:'ECDH',namedCurve:curveName},true,['deriveBits']);
+  }
+  const raw=await crypto.subtle.exportKey('raw',keyPair.publicKey);return Array.from(new Uint8Array(raw));}
+async function deriveSharedKey(remoteArr){logInfo('Deriving shared key');const remoteRaw=new Uint8Array(remoteArr).buffer;
+  let remoteKey;
+  if(curveName==='X25519'){
+    remoteKey=await crypto.subtle.importKey('raw',remoteRaw,{name:'X25519'},false,[]);
+  }else{
+    remoteKey=await crypto.subtle.importKey('raw',remoteRaw,{name:'ECDH',namedCurve:curveName},false,[]);
+  }
+  const bits=await crypto.subtle.deriveBits({name:curveName==='X25519'?'X25519':'ECDH',public:remoteKey},keyPair.privateKey,256);const salt=new TextEncoder().encode('p2p-chat-salt-v3'),info=new TextEncoder().encode('p2p-chat-session-'+curveName);const hkdfKey=await crypto.subtle.importKey('raw',bits,'HKDF',false,['deriveKey']);derivedKey=await crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt,info},hkdfKey,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);logInfo('Shared key derived');flushOutgoingQueue();}
+async function encryptMessagePlain(text){logInfo('Encrypting message: '+text);const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},derivedKey,new TextEncoder().encode(text));return{ciphertext:Array.from(new Uint8Array(ct)),iv:Array.from(iv)};}
+async function decryptMessagePlain(payload){logInfo('Decrypting message');const ct=new Uint8Array(payload.ciphertext),iv=new Uint8Array(payload.iv);const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},derivedKey,ct);return new TextDecoder().decode(pt);}
+// queue flush
+async function flushOutgoingQueue(){if(!derivedKey||!conn||!conn.open){logWarn('Queue flush skipped: no key or no connection');return;}while(outgoingQueue.length){const item=outgoingQueue.shift();const enc=await encryptMessagePlain(item.text);conn.send({type:'message',username,message:enc});displayMessage('You',item.text,true);logInfo('Flushed queued message: '+item.text);}}
+// display
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
+function displayMessage(sender,text,sent){const area=document.getElementById('messageArea');const el=document.createElement('div');el.className='message '+(sent?'sent':'received');el.innerHTML=`<strong>${escapeHtml(sender)}:</strong> ${escapeHtml(text)} <div class="timestamp">${new Date().toLocaleTimeString()}</div>`;area.appendChild(el);area.scrollTop=area.scrollHeight;updateJumpButtonVisibility();}
+// stun check
+function verifyStunServers(servers,timeout=3000){return new Promise(res=>{const pc=new RTCPeerConnection({iceServers:servers});let sawSrflx=false;pc.createDataChannel('x');pc.onicecandidate=ev=>{if(ev.candidate&&ev.candidate.candidate.includes('typ srflx'))sawSrflx=true;};pc.createOffer().then(o=>pc.setLocalDescription(o));setTimeout(()=>{pc.close();res(sawSrflx);},timeout);});}
+// peer init
+async function initPeer(){await selectBestCurve();desiredId=generatePersistentId(username);peer=new Peer(desiredId,{debug:2,config:{iceServers:ICE_SERVERS}});peer.on('open',async id=>{myId=id;idStable=(id===desiredId);document.getElementById('myId').textContent=myId;updateConnectionStatus('Ready');const stun=await verifyStunServers(ICE_SERVERS);logInfo('STUN check '+stun);});peer.on('connection',async c=>{if(!confirm(`Accept ${c.metadata?.username||c.peer}?`)){c.close();return;}if(conn&&conn.open)conn.close();conn=c;const pub=await generateKeyPair();if(c.metadata?.publicKey)await deriveSharedKey(c.metadata.publicKey);setupConnectionHandlers();conn.send({type:'key_exchange_response',publicKey:pub,username,persistent:idStable});updateConnectionStatus('Connected');});peer.on('error',e=>logError('Peer error '+e.message));peer.on('disconnected',()=>{logWarn('Peer disconnected');try{peer.reconnect();}catch{}});}
+function setupConnectionHandlers(){conn.on('open',()=>{logInfo('Connection opened');updateConnectionStatus('Connected');});conn.on('data',async d=>{logInfo('Data received: '+JSON.stringify(d));if(d.type==='key_exchange_response'&&Array.isArray(d.publicKey)){await deriveSharedKey(d.publicKey);}else if(d.type==='request_key'){if(!keyPair){logWarn('No keypair available for key request');return;}const pub=await crypto.subtle.exportKey('raw',keyPair.publicKey);conn.send({type:'key_exchange_response',publicKey:Array.from(new Uint8Array(pub)),username,persistent:idStable});}else if(d.type==='message'){const pt=await decryptMessagePlain(d.message);displayMessage(d.username||conn.peer,pt,false);}});conn.on('close',()=>{logWarn('Connection closed');updateConnectionStatus('Disconnected');conn=null;derivedKey=null;keyPair=null;});}
+// connect
+async function connectToPeer(){const peerId=document.getElementById('peerIdInput').value.trim();if(!peerId||peerId===myId)return;if(conn&&conn.open)conn.close();const pub=await generateKeyPair();conn=peer.connect(peerId,{metadata:{username,publicKey:pub,persistent:idStable}});setupConnectionHandlers();setTimeout(()=>{if(!derivedKey&&conn&&conn.open){logWarn('No key yet, requesting key');conn.send({type:'request_key'});}},1500);}
+async function sendMessage(){const input=document.getElementById('messageInput');const text=input.value.trim();if(!text||!conn||!conn.open){logWarn('Send skipped: no text or no open connection');return;}if(!derivedKey){logWarn('No key yet, queuing message');outgoingQueue.push({text});conn.send({type:'request_key'});input.value='';return;}const enc=await encryptMessagePlain(text);conn.send({type:'message',username,message:enc});displayMessage('You',text,true);logInfo('Message sent: '+text);input.value='';}
+// UI handlers
+document.getElementById('saveProfileBtn').onclick=async()=>{username=document.getElementById('usernameInput').value.trim();if(!username){alert('Enter username');return;}document.getElementById('displayUsername').textContent=username;document.getElementById('setupPanel').style.display='none';document.getElementById('mainPanel').style.display='flex';await initPeer();};
+document.getElementById('sendBtn').onclick=sendMessage;document.getElementById('connectBtn').onclick=connectToPeer;
+document.getElementById('copyIdBtn').onclick=()=>{navigator.clipboard.writeText(myId||'');showToast('ID copied');};
+document.getElementById('messageInput').onkeypress=e=>{if(e.key==='Enter')sendMessage();};
+document.getElementById('jumpButton').onclick=()=>document.getElementById('messageArea').scrollIntoView({behavior:'smooth',block:'end'});
+function updateJumpButtonVisibility(){const btn=document.getElementById('jumpButton'),area=document.getElementById('messageArea');btn.style.display=(area.scrollHeight>area.clientHeight+200)?'block':'none';}
+document.getElementById('toggleSidebar').onclick=()=>{const sb=document.getElementById('sidebar');if(sb.classList.contains('open')){sb.classList.remove('open');}else{sb.classList.add('open');}};
+</script>
+</body>
+</html>
