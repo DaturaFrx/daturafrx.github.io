@@ -6,143 +6,877 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
 <style>
-body { font-family: sans-serif; margin:0; padding:0; display:flex; height:100vh; }
-.container { flex:1; display:flex; flex-direction:column; padding:12px; }
-header { border-bottom:1px solid #ccc; padding-bottom:8px; margin-bottom:8px; }
-.subtitle { font-size:0.9em; color:#666; }
-.user-info, .connection-section, .message-input-container { margin:8px 0; }
-.message-area { flex:1; overflow:auto; border:1px solid #ddd; padding:6px; }
-.message.sent { text-align:right; color:#0b74de; }
-.message.received { text-align:left; color:#333; }
-.timestamp { font-size:0.7em; color:#666; }
-#jumpButton { position:fixed; bottom:12px; right:12px; display:none; }
-.toast-notification { visibility:hidden; background:#333; color:#fff; text-align:center; border-radius:4px; padding:8px; position:fixed; top:12px; right:12px; z-index:1; }
-.toast-notification.show { visibility:visible; }
-.connection-status { padding:4px; font-size:0.9em; }
-.connection-status.disconnected { color:#b91c1c; }
-#sidebar { width:0; transition:0.3s; overflow-x:hidden; background:#111; color:#eee; position:fixed; right:0; top:0; bottom:0; z-index:2; padding:12px; font-size:12px; display:none; }
-#sidebar.open { display:block; width:40%; }
-#toggleSidebar { position:fixed; top:12px; right:12px; z-index:3; }
-.log-info { color:#0b74de; }
-.log-warn { color:#a16207; }
-.log-error { color:#b91c1c; }
+:root { 
+  --primary: #000; 
+  --bg: #fff; 
+  --border: #ddd; 
+  --shadow: rgba(0,0,0,0.1);
+  --floating-height: 200px;
+  --success: #0a0;
+  --warning: #fa0;
+  --error: #f00;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--primary);
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  overflow-x: hidden;
+}
+
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--floating-height);
+}
+
+.header {
+  background: var(--bg);
+  border-bottom: 2px solid var(--primary);
+  padding: 12px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #666;
+}
+
+.status-dot.connected { background: var(--success); }
+.status-dot.connecting { background: var(--warning); animation: pulse 1s infinite; }
+.status-dot.error { background: var(--error); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  scroll-behavior: smooth;
+}
+
+.messages-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.message-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  padding: 12px;
+  position: relative;
+  word-wrap: break-word;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+.message-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.message-card.own {
+  border-left-color: #0066cc;
+  background: #f8faff;
+  margin-left: 20%;
+}
+
+.message-card.received {
+  border-left-color: #666;
+  margin-right: 20%;
+}
+
+.message-meta {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.message-author {
+  font-weight: bold;
+}
+
+.message-time {
+  font-family: monospace;
+}
+
+.message-text {
+  flex: 1;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.floating-input {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border-top: 2px solid var(--primary);
+  padding: 16px;
+  z-index: 200;
+  box-shadow: 0 -4px 20px var(--shadow);
+}
+
+.input-container {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.setup-panel {
+  background: #f8f8f8;
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.setup-panel h3 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+}
+
+.setup-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.setup-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.setup-btn {
+  background: var(--primary);
+  color: var(--bg);
+  border: none;
+  padding: 6px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.connection-panel {
+  background: #f8f8f8;
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.connection-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-weight: bold;
+  font-size: 10px;
+  color: #666;
+}
+
+.info-value {
+  font-family: monospace;
+  font-size: 10px;
+  background: var(--bg);
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  word-break: break-all;
+}
+
+.copy-btn {
+  background: #666;
+  color: var(--bg);
+  border: none;
+  padding: 2px 6px;
+  font-size: 9px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.connection-code {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.code-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  padding: 4px 6px;
+  font-family: monospace;
+  font-size: 10px;
+}
+
+.code-btn {
+  background: var(--primary);
+  color: var(--bg);
+  border: none;
+  padding: 4px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.message-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  padding: 10px;
+  font-family: inherit;
+  font-size: inherit;
+  resize: vertical;
+  min-height: 40px;
+  max-height: 120px;
+  border-radius: 0;
+}
+
+.message-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.send-btn {
+  background: var(--primary);
+  color: var(--bg);
+  border: none;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  min-width: 60px;
+  height: 40px;
+}
+
+.send-btn:hover {
+  opacity: 0.8;
+}
+
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.empty-state {
+  text-align: center;
+  color: #666;
+  padding: 60px 20px;
+  font-style: italic;
+}
+
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--primary);
+  color: var(--bg);
+  padding: 8px 12px;
+  font-size: 11px;
+  z-index: 300;
+  transform: translateY(-100px);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.debug-toggle {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: #666;
+  color: var(--bg);
+  border: none;
+  padding: 6px 10px;
+  font-size: 10px;
+  cursor: pointer;
+  z-index: 150;
+}
+
+.debug-panel {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 300px;
+  background: #111;
+  color: #eee;
+  font-size: 10px;
+  padding: 60px 12px 12px 12px;
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 140;
+}
+
+.debug-panel.open {
+  transform: translateX(0);
+}
+
+.debug-log {
+  font-family: monospace;
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+.log-info { color: #4a9eff; }
+.log-warn { color: #ffa500; }
+.log-error { color: #ff4444; }
+
+@media (max-width: 768px) {
+  .connection-info {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  :root {
+    --floating-height: 240px;
+  }
+  
+  .message-card.own {
+    margin-left: 10%;
+  }
+  
+  .message-card.received {
+    margin-right: 10%;
+  }
+  
+  .debug-panel {
+    width: 80%;
+  }
+}
 </style>
 </head>
 <body>
 <div class="container">
-  <div id="toast" class="toast-notification">ID copied</div>
-  <button id="toggleSidebar">Logs</button>
-  <header><h1>P2P Chat</h1><p class="subtitle">Peer-to-Peer Encrypted Messaging</p></header>
-  <div class="setup-container" id="setupPanel">
-    <h3>User Setup</h3>
-    <input type="text" id="usernameInput" placeholder="Enter name" required>
-    <button id="saveProfileBtn">Save Profile</button>
-  </div>
-  <div id="mainPanel" style="display:none; flex:1; display:flex; flex-direction:column;">
-    <div class="user-info">
-      <h3>Your ID: <span id="myId">Generating...</span> <button id="copyIdBtn">Copy</button></h3>
-      <h3>Username: <span id="displayUsername"></span></h3>
-      <div id="status" class="connection-status disconnected">Not connected</div>
-    </div>
-    <div class="connection-section">
-      <h3>Connect to Peer</h3>
-      <input type="text" id="peerIdInput" placeholder="Enter peer ID">
-      <button id="connectBtn">Connect</button>
-      <button id="cancelConnectionBtn" style="display:none;">Cancel</button>
-    </div>
-    <div id="messageArea" class="message-area"></div>
-    <div class="message-input-container">
-      <input type="text" id="messageInput" placeholder="Type message">
-      <button id="sendBtn">Send</button>
+  <div class="header">
+    <h1>P2P Chat</h1>
+    <div class="status-bar">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Initializing</span>
     </div>
   </div>
-  <button id="jumpButton">Jump to Messages</button>
+  
+  <div class="messages-container" id="messagesContainer">
+    <div class="messages-grid" id="messagesGrid">
+      <div class="empty-state" id="emptyState">
+        Set up your profile and connect to start chatting
+      </div>
+    </div>
+  </div>
 </div>
-<div id="sidebar"><h4>Debug Log</h4><div id="debugArea"></div></div>
+
+<div class="floating-input">
+  <div class="input-container">
+    <div class="setup-panel" id="setupPanel">
+      <h3>Setup Profile</h3>
+      <div class="setup-row">
+        <input type="text" class="setup-input" id="usernameInput" placeholder="Enter your username">
+        <button class="setup-btn" id="saveProfileBtn">Save</button>
+      </div>
+    </div>
+    
+    <div class="connection-panel" id="connectionPanel" style="display: none;">
+      <div class="connection-info">
+        <div class="info-item">
+          <span class="info-label">Your ID</span>
+          <div class="info-value" id="myIdDisplay">
+            Generating...
+            <button class="copy-btn" id="copyIdBtn">Copy</button>
+          </div>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Username</span>
+          <div class="info-value" id="usernameDisplay">-</div>
+        </div>
+      </div>
+      
+      <div class="connection-code">
+        <input type="text" class="code-input" id="peerIdInput" placeholder="Enter peer ID to connect">
+        <button class="code-btn" id="connectBtn">Connect</button>
+      </div>
+    </div>
+    
+    <div class="input-row">
+      <textarea class="message-input" id="messageInput" placeholder="Type your message... (Shift+Enter for new line)" rows="1"></textarea>
+      <button class="send-btn" id="sendBtn" disabled>Send</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<button class="debug-toggle" id="debugToggle">Debug</button>
+<div class="debug-panel" id="debugPanel">
+  <h4>Debug Log</h4>
+  <div class="debug-log" id="debugLog"></div>
+</div>
+
 <script>
-// state
-let peer=null, conn=null, myId=null, desiredId=null, idStable=false, username='';
-let keyPair=null, derivedKey=null, curveName='P-256';
-const outgoingQueue=[];
-const ICE_SERVERS=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun2.l.google.com:19302'}];
-// logging
-function now(){return new Date().toISOString();}
-function appendLog(level,msg){
-  const el=document.getElementById('debugArea');
-  const line=document.createElement('div');
-  line.className=level==='INFO'?'log-info':(level==='WARN'?'log-warn':'log-error');
-  line.textContent=`[${now()}] [${level}] ${msg}`;
-  el.appendChild(line);el.scrollTop=el.scrollHeight;
+let peer = null;
+let conn = null;
+let myId = null;
+let username = '';
+let keyPair = null;
+let derivedKey = null;
+let curveName = 'P-256';
+const outgoingQueue = [];
+const ICE_SERVERS = [
+  {urls: 'stun:stun.l.google.com:19302'},
+  {urls: 'stun:stun1.l.google.com:19302'},
+  {urls: 'stun:stun2.l.google.com:19302'}
+];
+
+// Logging functions
+function logMessage(level, msg) {
+  const timestamp = new Date().toISOString();
+  const logEl = document.getElementById('debugLog');
+  const entry = document.createElement('div');
+  entry.className = `log-${level.toLowerCase()}`;
+  entry.textContent = `[${timestamp.split('T')[1].split('.')[0]}] [${level}] ${msg}`;
+  logEl.appendChild(entry);
+  logEl.scrollTop = logEl.scrollHeight;
   console.log(`[${level}] ${msg}`);
 }
-function logInfo(m){appendLog('INFO',m);}
-function logWarn(m){appendLog('WARN',m);}
-function logError(m){appendLog('ERROR',m);}
-// UI helpers
-function showToast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
-function updateConnectionStatus(t){const el=document.getElementById('status');el.textContent=t;el.classList.remove('disconnected');if(t==='Disconnected'||t==='Not connected'||t==='Error')el.classList.add('disconnected');}
-// id
-function generatePersistentId(u){let seed=localStorage.getItem('p2p_seed');if(!seed){seed=Math.random().toString(36).slice(2,10);localStorage.setItem('p2p_seed',seed);}
-const combined=`${u}:${seed}`;let h=0;for(let i=0;i<combined.length;i++){h=((h<<5)-h)+combined.charCodeAt(i);h|=0;}return `user-${Math.abs(h).toString(16)}`;}
-// crypto
-async function selectBestCurve(){
-  // Try X25519 first (most secure and efficient)
-  if('X25519' in crypto.subtle){
-    try{
-      const testKey=await crypto.subtle.generateKey({name:'X25519'},false,['deriveBits']);
-      curveName='X25519';logInfo('Using curve X25519');return;
-    }catch(e){logWarn('X25519 failed: '+e.message);}
+
+function logInfo(msg) { logMessage('INFO', msg); }
+function logWarn(msg) { logMessage('WARN', msg); }
+function logError(msg) { logMessage('ERROR', msg); }
+
+// Toast notification
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// Status management
+function updateStatus(status, type = 'info') {
+  const statusText = document.getElementById('statusText');
+  const statusDot = document.getElementById('statusDot');
+  
+  statusText.textContent = status;
+  statusDot.className = 'status-dot';
+  
+  if (type === 'connected') statusDot.classList.add('connected');
+  else if (type === 'connecting') statusDot.classList.add('connecting');
+  else if (type === 'error') statusDot.classList.add('error');
+}
+
+// Auto-scroll to bottom
+function scrollToBottom() {
+  const container = document.getElementById('messagesContainer');
+  container.scrollTop = container.scrollHeight;
+}
+
+// Message display
+function displayMessage(sender, text, isOwn = false) {
+  const messagesGrid = document.getElementById('messagesGrid');
+  const emptyState = document.getElementById('emptyState');
+  
+  if (emptyState) {
+    emptyState.remove();
   }
   
-  // Fallback to ECDH curves
-  const curves=['P-256','P-384'];
-  for(const curve of curves){
-    try{
-      const testKey=await crypto.subtle.generateKey({name:'ECDH',namedCurve:curve},false,['deriveBits']);
-      curveName=curve;logInfo('Using curve '+curveName);return;
-    }catch(e){logWarn('Curve '+curve+' failed: '+e.message);}
+  const messageCard = document.createElement('div');
+  messageCard.className = `message-card ${isOwn ? 'own' : 'received'}`;
+  
+  messageCard.innerHTML = `
+    <div class="message-meta">
+      <span class="message-author">${escapeHtml(sender)}</span>
+      <span class="message-time">${new Date().toLocaleTimeString()}</span>
+    </div>
+    <div class="message-text">${escapeHtml(text)}</div>
+  `;
+  
+  messagesGrid.appendChild(messageCard);
+  
+  // Auto-scroll to bottom
+  setTimeout(scrollToBottom, 50);
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Crypto functions
+function generatePersistentId(username) {
+  let seed = localStorage.getItem('p2p_seed');
+  if (!seed) {
+    seed = Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('p2p_seed', seed);
+  }
+  const combined = `${username}:${seed}`;
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+    hash |= 0;
+  }
+  return `user-${Math.abs(hash).toString(16)}`;
+}
+
+async function selectBestCurve() {
+  const curves = ['P-256', 'P-384'];
+  for (const curve of curves) {
+    try {
+      await crypto.subtle.generateKey({name: 'ECDH', namedCurve: curve}, false, ['deriveBits']);
+      curveName = curve;
+      logInfo(`Using curve ${curveName}`);
+      return;
+    } catch (e) {
+      logWarn(`Curve ${curve} failed: ${e.message}`);
+    }
   }
   throw new Error('No working curves found');
 }
-async function generateKeyPair(){logInfo('Generating key pair on curve '+curveName);
-  if(curveName==='X25519'){
-    keyPair=await crypto.subtle.generateKey({name:'X25519'},true,['deriveBits']);
-  }else{
-    keyPair=await crypto.subtle.generateKey({name:'ECDH',namedCurve:curveName},true,['deriveBits']);
+
+async function generateKeyPair() {
+  logInfo(`Generating key pair on curve ${curveName}`);
+  keyPair = await crypto.subtle.generateKey(
+    {name: 'ECDH', namedCurve: curveName}, 
+    true, 
+    ['deriveBits']
+  );
+  const raw = await crypto.subtle.exportKey('raw', keyPair.publicKey);
+  return Array.from(new Uint8Array(raw));
+}
+
+async function deriveSharedKey(remoteArr) {
+  logInfo('Deriving shared key');
+  const remoteRaw = new Uint8Array(remoteArr).buffer;
+  const remoteKey = await crypto.subtle.importKey(
+    'raw', 
+    remoteRaw, 
+    {name: 'ECDH', namedCurve: curveName}, 
+    false, 
+    []
+  );
+  
+  const bits = await crypto.subtle.deriveBits(
+    {name: 'ECDH', public: remoteKey}, 
+    keyPair.privateKey, 
+    256
+  );
+  
+  const salt = new TextEncoder().encode('p2p-chat-salt-v3');
+  const info = new TextEncoder().encode(`p2p-chat-session-${curveName}`);
+  
+  const hkdfKey = await crypto.subtle.importKey('raw', bits, 'HKDF', false, ['deriveKey']);
+  derivedKey = await crypto.subtle.deriveKey(
+    {name: 'HKDF', hash: 'SHA-256', salt, info}, 
+    hkdfKey, 
+    {name: 'AES-GCM', length: 256}, 
+    false, 
+    ['encrypt', 'decrypt']
+  );
+  
+  logInfo('Shared key derived');
+  flushOutgoingQueue();
+}
+
+async function encryptMessage(text) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    {name: 'AES-GCM', iv}, 
+    derivedKey, 
+    new TextEncoder().encode(text)
+  );
+  return {
+    ciphertext: Array.from(new Uint8Array(ciphertext)),
+    iv: Array.from(iv)
+  };
+}
+
+async function decryptMessage(payload) {
+  const ciphertext = new Uint8Array(payload.ciphertext);
+  const iv = new Uint8Array(payload.iv);
+  const plaintext = await crypto.subtle.decrypt(
+    {name: 'AES-GCM', iv}, 
+    derivedKey, 
+    ciphertext
+  );
+  return new TextDecoder().decode(plaintext);
+}
+
+async function flushOutgoingQueue() {
+  if (!derivedKey || !conn || !conn.open) {
+    logWarn('Queue flush skipped - not ready');
+    return;
   }
-  const raw=await crypto.subtle.exportKey('raw',keyPair.publicKey);return Array.from(new Uint8Array(raw));}
-async function deriveSharedKey(remoteArr){logInfo('Deriving shared key');const remoteRaw=new Uint8Array(remoteArr).buffer;
-  let remoteKey;
-  if(curveName==='X25519'){
-    remoteKey=await crypto.subtle.importKey('raw',remoteRaw,{name:'X25519'},false,[]);
-  }else{
-    remoteKey=await crypto.subtle.importKey('raw',remoteRaw,{name:'ECDH',namedCurve:curveName},false,[]);
+  
+  while (outgoingQueue.length) {
+    const item = outgoingQueue.shift();
+    const encrypted = await encryptMessage(item.text);
+    conn.send({
+      type: 'message',
+      username,
+      message: encrypted
+    });
+    displayMessage('You', item.text, true);
   }
-  const bits=await crypto.subtle.deriveBits({name:curveName==='X25519'?'X25519':'ECDH',public:remoteKey},keyPair.privateKey,256);const salt=new TextEncoder().encode('p2p-chat-salt-v3'),info=new TextEncoder().encode('p2p-chat-session-'+curveName);const hkdfKey=await crypto.subtle.importKey('raw',bits,'HKDF',false,['deriveKey']);derivedKey=await crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt,info},hkdfKey,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);logInfo('Shared key derived');flushOutgoingQueue();}
-async function encryptMessagePlain(text){logInfo('Encrypting message: '+text);const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},derivedKey,new TextEncoder().encode(text));return{ciphertext:Array.from(new Uint8Array(ct)),iv:Array.from(iv)};}
-async function decryptMessagePlain(payload){logInfo('Decrypting message');const ct=new Uint8Array(payload.ciphertext),iv=new Uint8Array(payload.iv);const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},derivedKey,ct);return new TextDecoder().decode(pt);}
-// queue flush
-async function flushOutgoingQueue(){if(!derivedKey||!conn||!conn.open){logWarn('Queue flush skipped: no key or no connection');return;}while(outgoingQueue.length){const item=outgoingQueue.shift();const enc=await encryptMessagePlain(item.text);conn.send({type:'message',username,message:enc});displayMessage('You',item.text,true);logInfo('Flushed queued message: '+item.text);}}
-// display
-function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
-function displayMessage(sender,text,sent){const area=document.getElementById('messageArea');const el=document.createElement('div');el.className='message '+(sent?'sent':'received');el.innerHTML=`<strong>${escapeHtml(sender)}:</strong> ${escapeHtml(text)} <div class="timestamp">${new Date().toLocaleTimeString()}</div>`;area.appendChild(el);area.scrollTop=area.scrollHeight;updateJumpButtonVisibility();}
-// stun check
-function verifyStunServers(servers,timeout=3000){return new Promise(res=>{const pc=new RTCPeerConnection({iceServers:servers});let sawSrflx=false;pc.createDataChannel('x');pc.onicecandidate=ev=>{if(ev.candidate&&ev.candidate.candidate.includes('typ srflx'))sawSrflx=true;};pc.createOffer().then(o=>pc.setLocalDescription(o));setTimeout(()=>{pc.close();res(sawSrflx);},timeout);});}
-// peer init
-async function initPeer(){await selectBestCurve();desiredId=generatePersistentId(username);peer=new Peer(desiredId,{debug:2,config:{iceServers:ICE_SERVERS}});peer.on('open',async id=>{myId=id;idStable=(id===desiredId);document.getElementById('myId').textContent=myId;updateConnectionStatus('Ready');const stun=await verifyStunServers(ICE_SERVERS);logInfo('STUN check '+stun);});peer.on('connection',async c=>{if(!confirm(`Accept ${c.metadata?.username||c.peer}?`)){c.close();return;}if(conn&&conn.open)conn.close();conn=c;const pub=await generateKeyPair();if(c.metadata?.publicKey)await deriveSharedKey(c.metadata.publicKey);setupConnectionHandlers();conn.send({type:'key_exchange_response',publicKey:pub,username,persistent:idStable});updateConnectionStatus('Connected');});peer.on('error',e=>logError('Peer error '+e.message));peer.on('disconnected',()=>{logWarn('Peer disconnected');try{peer.reconnect();}catch{}});}
-function setupConnectionHandlers(){conn.on('open',()=>{logInfo('Connection opened');updateConnectionStatus('Connected');});conn.on('data',async d=>{logInfo('Data received: '+JSON.stringify(d));if(d.type==='key_exchange_response'&&Array.isArray(d.publicKey)){await deriveSharedKey(d.publicKey);}else if(d.type==='request_key'){if(!keyPair){logWarn('No keypair available for key request');return;}const pub=await crypto.subtle.exportKey('raw',keyPair.publicKey);conn.send({type:'key_exchange_response',publicKey:Array.from(new Uint8Array(pub)),username,persistent:idStable});}else if(d.type==='message'){const pt=await decryptMessagePlain(d.message);displayMessage(d.username||conn.peer,pt,false);}});conn.on('close',()=>{logWarn('Connection closed');updateConnectionStatus('Disconnected');conn=null;derivedKey=null;keyPair=null;});}
-// connect
-async function connectToPeer(){const peerId=document.getElementById('peerIdInput').value.trim();if(!peerId||peerId===myId)return;if(conn&&conn.open)conn.close();const pub=await generateKeyPair();conn=peer.connect(peerId,{metadata:{username,publicKey:pub,persistent:idStable}});setupConnectionHandlers();setTimeout(()=>{if(!derivedKey&&conn&&conn.open){logWarn('No key yet, requesting key');conn.send({type:'request_key'});}},1500);}
-async function sendMessage(){const input=document.getElementById('messageInput');const text=input.value.trim();if(!text||!conn||!conn.open){logWarn('Send skipped: no text or no open connection');return;}if(!derivedKey){logWarn('No key yet, queuing message');outgoingQueue.push({text});conn.send({type:'request_key'});input.value='';return;}const enc=await encryptMessagePlain(text);conn.send({type:'message',username,message:enc});displayMessage('You',text,true);logInfo('Message sent: '+text);input.value='';}
-// UI handlers
-document.getElementById('saveProfileBtn').onclick=async()=>{username=document.getElementById('usernameInput').value.trim();if(!username){alert('Enter username');return;}document.getElementById('displayUsername').textContent=username;document.getElementById('setupPanel').style.display='none';document.getElementById('mainPanel').style.display='flex';await initPeer();};
-document.getElementById('sendBtn').onclick=sendMessage;document.getElementById('connectBtn').onclick=connectToPeer;
-document.getElementById('copyIdBtn').onclick=()=>{navigator.clipboard.writeText(myId||'');showToast('ID copied');};
-document.getElementById('messageInput').onkeypress=e=>{if(e.key==='Enter')sendMessage();};
-document.getElementById('jumpButton').onclick=()=>document.getElementById('messageArea').scrollIntoView({behavior:'smooth',block:'end'});
-function updateJumpButtonVisibility(){const btn=document.getElementById('jumpButton'),area=document.getElementById('messageArea');btn.style.display=(area.scrollHeight>area.clientHeight+200)?'block':'none';}
-document.getElementById('toggleSidebar').onclick=()=>{const sb=document.getElementById('sidebar');if(sb.classList.contains('open')){sb.classList.remove('open');}else{sb.classList.add('open');}};
+}
+
+// Peer connection management
+async function initPeer() {
+  await selectBestCurve();
+  const desiredId = generatePersistentId(username);
+  
+  peer = new Peer(desiredId, {
+    debug: 2,
+    config: {iceServers: ICE_SERVERS}
+  });
+  
+  peer.on('open', (id) => {
+    myId = id;
+    document.getElementById('myIdDisplay').innerHTML = `${id} <button class="copy-btn" id="copyIdBtn">Copy</button>`;
+    document.getElementById('copyIdBtn').onclick = () => {
+      navigator.clipboard.writeText(myId);
+      showToast('ID copied to clipboard');
+    };
+    updateStatus('Ready - waiting for connections');
+    logInfo(`Peer initialized with ID: ${id}`);
+  });
+  
+  peer.on('connection', async (incomingConn) => {
+    const peerName = incomingConn.metadata?.username || incomingConn.peer;
+    if (!confirm(`Accept connection from ${peerName}?`)) {
+      incomingConn.close();
+      return;
+    }
+    
+    if (conn && conn.open) conn.close();
+    conn = incomingConn;
+    
+    const publicKey = await generateKeyPair();
+    if (incomingConn.metadata?.publicKey) {
+      await deriveSharedKey(incomingConn.metadata.publicKey);
+    }
+    
+    setupConnectionHandlers();
+    conn.send({
+      type: 'key_exchange_response',
+      publicKey,
+      username
+    });
+    
+    updateStatus('Connected', 'connected');
+    showToast(`Connected to ${peerName}`);
+  });
+  
+  peer.on('error', (err) => {
+    logError(`Peer error: ${err.message}`);
+    updateStatus('Error', 'error');
+  });
+}
+
+function setupConnectionHandlers() {
+  conn.on('open', () => {
+    updateStatus('Connected', 'connected');
+    document.getElementById('sendBtn').disabled = false;
+  });
+  
+  conn.on('data', async (data) => {
+    if (data.type === 'key_exchange_response' && Array.isArray(data.publicKey)) {
+      await deriveSharedKey(data.publicKey);
+    } else if (data.type === 'request_key') {
+      if (keyPair) {
+        const publicKey = await crypto.subtle.exportKey('raw', keyPair.publicKey);
+        conn.send({
+          type: 'key_exchange_response',
+          publicKey: Array.from(new Uint8Array(publicKey)),
+          username
+        });
+      }
+    } else if (data.type === 'message') {
+      try {
+        const plaintext = await decryptMessage(data.message);
+        displayMessage(data.username || conn.peer, plaintext, false);
+      } catch (e) {
+        logError(`Failed to decrypt message: ${e.message}`);
+      }
+    }
+  });
+  
+  conn.on('close', () => {
+    updateStatus('Disconnected', 'error');
+    document.getElementById('sendBtn').disabled = true;
+    conn = null;
+    derivedKey = null;
+    keyPair = null;
+    showToast('Connection closed');
+  });
+  
+  conn.on('error', (err) => {
+    logError(`Connection error: ${err.message}`);
+    updateStatus('Connection error', 'error');
+  });
+}
+
+async function connectToPeer() {
+  const peerId = document.getElementById('peerIdInput').value.trim();
+  if (!peerId || peerId === myId) {
+    showToast('Invalid peer ID');
+    return;
+  }
+  
+  if (conn && conn.open) conn.close();
+  
+  updateStatus('Connecting...', 'connecting');
+  
+  const publicKey = await generateKeyPair();
+  conn = peer.connect(peerId, {
+    metadata: {
+      username,
+      publicKey
+    }
+  });
+  
+  setupConnectionHandlers();
+  
+  setTimeout(() => {
+    if (!derivedKey && conn && conn.open) {
+      conn.send({type: 'request_key'});
+    }
+  }, 1500);
+}
+
+async function sendMessage() {
+  const input = document.getElementById('messageInput');
+  const text = input.value.trim();
+  
+  if (!text) return;
+  
+  if (!conn || !conn.open) {
+    showToast('Not connected to a peer');
+    return;
+  }
+  
+  if (!derivedKey) {
+    outgoingQueue.push({text});
+    conn.send({type: 'request_key'});
+    showToast('Message queued - establishing encryption');
+  } else {
+    const encrypted = await encryptMessage(text);
+    conn.send({
+      type: 'message',
+      username,
+      message: encrypted
+    });
+    displayMessage('You', text, true);
+  }
+  
+  input.value = '';
+  adjustTextareaHeight();
+}
+
+function adjustTextareaHeight() {
+  const textarea = document.getElementById('messageInput');
+  textarea.style.height = 'auto';
+  textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+}
+
+// Event listeners
+document.getElementById('saveProfileBtn').onclick = async () => {
+  const usernameInput = document.getElementById('usernameInput');
+  username = usernameInput.value.trim();
+  
+  if (!username) {
+    showToast('Please enter a username');
+    return;
+  }
+  
+  document.getElementById('usernameDisplay').textContent = username;
+  document.getElementById('setupPanel').style.display = 'none';
+  document.getElementById('connectionPanel').style.display = 'block';
+  
+  await initPeer();
+};
+
+document.getElementById('connectBtn').onclick = connectToPeer;
+document.getElementById('sendBtn').onclick = sendMessage;
+
+document.getElementById('messageInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+document.getElementById('messageInput').addEventListener('input', adjustTextareaHeight);
+
+document.getElementById('debugToggle').onclick = () => {
+  const debugPanel = document.getElementById('debugPanel');
+  debugPanel.classList.toggle('open');
+};
+
+// Initialize
+updateStatus('Enter username to begin');
 </script>
 </body>
-
 </html>
