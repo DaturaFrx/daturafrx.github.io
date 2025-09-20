@@ -49,27 +49,28 @@ async function deriveSharedKey(remoteArr) {
     false,
     []
   );
-
   const bits = await crypto.subtle.deriveBits(
     { name: "ECDH", public: remoteKey },
     keyPair.privateKey,
     256
   );
-
   const salt = new TextEncoder().encode("p2p-chat-salt-v3");
   const info = new TextEncoder().encode(`p2p-chat-session-${curveName}`);
-
   const hkdfKey = await crypto.subtle.importKey("raw", bits, "HKDF", false, [
     "deriveKey",
   ]);
   derivedKey = await crypto.subtle.deriveKey(
-    { name: "HKDF", hash: "SHA-256", salt, info },
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt,
+      info,
+    },
     hkdfKey,
     { name: "AES-GCM", length: 256 },
     false,
     ["encrypt", "decrypt"]
   );
-
   logInfo("Shared key derived");
   flushOutgoingQueue();
 }
@@ -106,7 +107,6 @@ async function flushOutgoingQueue() {
     logWarn("Queue flush skipped - not ready");
     return;
   }
-
   while (outgoingQueue.length) {
     const item = outgoingQueue.shift();
     const encrypted = await encryptMessage(item.text);

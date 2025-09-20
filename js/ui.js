@@ -4,37 +4,42 @@
 function updateStatus(status, type = "info") {
   const statusText = document.getElementById("statusText");
   const statusDot = document.getElementById("statusDot");
-
   statusText.textContent = status;
   statusDot.className = "status-dot";
-
   if (type === "connected") statusDot.classList.add("connected");
   else if (type === "connecting") statusDot.classList.add("connecting");
   else if (type === "error") statusDot.classList.add("error");
 }
 
-// Message display
+// Message display with linkification support
 function displayMessage(sender, text, isOwn = false) {
   const messagesGrid = document.getElementById("messagesGrid");
   const emptyState = document.getElementById("emptyState");
-
   if (emptyState) {
     emptyState.remove();
   }
 
   const messageCard = document.createElement("div");
   messageCard.className = `message-card ${isOwn ? "own" : "received"}`;
-
+  
+  // Create message structure with proper linkification
+  const messageText = document.createElement("div");
+  messageText.className = "message-text";
+  
+  // Apply linkification to the escaped text
+  messageText.innerHTML = linkifyText(escapeHtml(text));
+  
   messageCard.innerHTML = `
     <div class="message-meta">
       <span class="message-author">${escapeHtml(sender)}</span>
       <span class="message-time">${new Date().toLocaleTimeString()}</span>
     </div>
-    <div class="message-text">${escapeHtml(text)}</div>
   `;
-
+  
+  // Append the linkified message text
+  messageCard.appendChild(messageText);
   messagesGrid.appendChild(messageCard);
-
+  
   // Auto-scroll to bottom
   setTimeout(scrollToBottom, 50);
 }
@@ -45,16 +50,13 @@ function setupEventListeners() {
   document.getElementById("saveProfileBtn").onclick = async () => {
     const usernameInput = document.getElementById("usernameInput");
     username = usernameInput.value.trim();
-
     if (!username) {
       showToast("Please enter a username");
       return;
     }
-
     document.getElementById("usernameDisplay").textContent = username;
     document.getElementById("setupPanel").style.display = "none";
     document.getElementById("connectionPanel").style.display = "block";
-
     await initPeer();
   };
 
