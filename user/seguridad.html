@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Manifiesto de Seguridad Digital — Tor · Tails · OpenPGP · Proton · Airgaps</title>
+  <style>
+    :root {
+      --bg: #0f1113;
+      --muted: #9aa4ab;
+      --accent: #68a0ff;
+      --text: #e6eef6;
+      --menu-bg: #161b22;
+      --menu-width: 240px;
+      --warning: #ff6b6b;
+      --success: #51cf66;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      line-height: 1.6;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 80px 28px 28px;
+      /* Use more horizontal space */
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    p.lead {
+      margin: 0 0 24px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    section {
+      margin: 32px 0;
+      padding: 0 0 0 0;
+      background: none;
+      border-radius: 0;
+      border-left: none;
+      /* Remove card style */
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    h3 {
+      margin: 16px 0 8px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    ul, ol {
+      margin: 12px 0;
+      padding-left: 24px;
+      color: var(--muted);
+    }
+
+    li {
+      margin: 8px 0;
+      line-height: 1.5;
+    }
+
+    li strong {
+      color: var(--text);
+    }
+
+    pre {
+      background: #071018;
+      color: #cfe9ff;
+      padding: 14px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+      margin: 12px 0;
+    }
+
+    code {
+      background: #071018;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .warning-box {
+      background: rgba(255, 107, 107, 0.1);
+      border-left: 3px solid var(--warning);
+      padding: 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+    }
+
+    .warning-box h3 {
+      color: var(--warning);
+      margin-top: 0;
+    }
+
+    .tip-box {
+      background: rgba(81, 207, 102, 0.1);
+      border-left: 3px solid var(--success);
+      padding: 16px;
+      margin: 16px 0;
+      border-radius: 6px;
+    }
+
+    .tip-box h3 {
+      color: var(--success);
+      margin-top: 0;
+    }
+
+    footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(154, 164, 171, 0.2);
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .menu-btn {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 1001;
+      background: var(--menu-bg);
+      border: 1px solid rgba(104, 160, 255, 0.3);
+      color: var(--text);
+      padding: 12px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .menu-btn:hover {
+      background: rgba(104, 160, 255, 0.1);
+      border-color: var(--accent);
+    }
+
+    .menu {
+      position: fixed;
+      top: 0;
+      left: -260px;
+      width: var(--menu-width);
+      height: 100vh;
+      background: var(--menu-bg);
+      overflow-y: auto;
+      padding: 24px;
+      transition: left 0.3s ease;
+      z-index: 1000;
+      box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .menu.show {
+      left: 0;
+    }
+
+    .menu h3 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      color: var(--accent);
+      font-size: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(104, 160, 255, 0.3);
+    }
+
+    .menu a {
+      display: block;
+      color: var(--text);
+      padding: 10px 12px;
+      text-decoration: none;
+      border-radius: 4px;
+      transition: all 0.2s;
+      margin: 4px 0;
+    }
+
+    .menu a:hover {
+      color: var(--accent);
+      background: rgba(104, 160, 255, 0.1);
+      padding-left: 16px;
+    }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+
+    .overlay.show {
+      display: block;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Mobile CSS */
+    @media (max-width: 900px) {
+      .wrap {
+        max-width: 100vw;
+        padding: 70px 8px 16px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 16px;
+      }
+      section {
+        margin: 20px 0;
+        padding: 0;
+      }
+      pre, code {
+        font-size: 12px;
+      }
+      .menu {
+        width: 80vw;
+        left: -90vw;
+        padding: 16px;
+      }
+      .menu.show {
+        left: 0;
+      }
+    }
+    @media (max-width: 600px) {
+      .wrap {
+        padding: 60px 2vw 8px;
+      }
+      h1 {
+        font-size: 18px;
+      }
+      h2 {
+        font-size: 15px;
+      }
+      h3 {
+        font-size: 13px;
+      }
+      .menu-btn {
+        font-size: 14px;
+        padding: 8px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button class="menu-btn" onclick="toggleMenu()">☰ Índice</button>
+  <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+  
+  <nav id="menu" class="menu">
+    <h3 style="margin-top:40px;">Contenido</h3>
+    <a href="#introduccion">Introducción</a>
+    <a href="#modelo-amenazas">Modelo de Amenazas</a>
+    <a href="#tor">Tor Browser</a>
+    <a href="#tails">Tails OS</a>
+    <a href="#openpgp">OpenPGP (Kleopatra)</a>
+    <a href="#proton">ProtonMail</a>
+    <a href="#airgap">Airgaps</a>
+    <a href="#opsec">Seguridad Operacional</a>
+    <a href="#limitaciones">Limitaciones Críticas</a>
+    <a href="#recursos">Recursos Adicionales</a>
+  </nav>
+
+  <div class="wrap" role="main">
+    <h1>Manifiesto de Seguridad Digital</h1>
+    <p class="lead">Esta guía se basa en las mejores prácticas de organizaciones como EFF (Electronic Frontier Foundation) y el proyecto Tails. Está diseñada para personas sin conocimientos previos de seguridad digital. Aquí encontrarás instrucciones paso a paso sobre Tor, Tails, OpenPGP, ProtonMail y airgaps. La seguridad requiere compromiso: si no estás dispuesto a seguir estos pasos, no funcionará.</p>
+
+    <section id="introduccion">
+      <h2>Antes de Empezar</h2>
+      <p>La seguridad no es un producto que compras; es un proceso continuo. Según la EFF, el primer paso es entender que <strong>no existe la seguridad perfecta</strong>. Lo que sí existe es la seguridad apropiada para tu situación específica.</p>
+      
+      <div class="tip-box">
+        <h3>💡 Principio Fundamental</h3>
+        <p>La seguridad es tan fuerte como su eslabón más débil. Un solo error puede comprometer todo tu sistema. Por eso, entender <em>por qué</em> haces algo es tan importante como saber <em>cómo</em> hacerlo.</p>
+      </div>
+    </section>
+
+    <section id="modelo-amenazas">
+      <h2>Modelo de Amenazas: ¿Contra Qué Te Proteges?</h2>
+      <p>Antes de usar cualquier herramienta, debes responder estas preguntas:</p>
+      <ul>
+        <li><strong>¿Qué quieres proteger?</strong> (datos, identidad, ubicación, comunicaciones)</li>
+        <li><strong>¿De quién te proteges?</strong> (gobierno, corporaciones, hackers, personas cercanas)</li>
+        <li><strong>¿Cuál es la probabilidad de que necesites protección?</strong></li>
+        <li><strong>¿Qué tan graves son las consecuencias si fallas?</strong></li>
+        <li><strong>¿Cuánto esfuerzo estás dispuesto a invertir?</strong></li>
+      </ul>
+      <p>Tu modelo de amenazas determina qué herramientas necesitas. No todos necesitan Tails; algunos solo necesitan usar contraseñas fuertes y autenticación de dos factores.</p>
+    </section>
+
+    <section id="tor">
+      <h2>Tor Browser: Navegación Anónima</h2>
+      <p>Tor (The Onion Router) es una red que oculta tu identidad al hacer rebotar tu tráfico a través de múltiples servidores (nodos). Imagina enviar una carta en tres sobres: cada persona solo puede ver el siguiente destino, no el origen ni el destino final.</p>
+      
+      <h3>Cómo Usar Tor Correctamente</h3>
+      <ol>
+        <li><strong>Descarga oficial:</strong> Solo desde <code>torproject.org</code>. Verifica la firma digital del archivo.</li>
+        <li><strong>Mantén actualizado:</strong> Las vulnerabilidades se parchean constantemente.</li>
+        <li><strong>No cambies configuraciones:</strong> El Tor Browser está configurado para máxima seguridad. Cambiar configuraciones puede exponerte.</li>
+        <li><strong>Usa servicios .onion:</strong> Cuando estén disponibles (ProtonMail, DuckDuckGo, BBC), mantienen todo el tráfico dentro de Tor.</li>
+        <li><strong>No descargues archivos grandes:</strong> Los torrents y descargas grandes comprometen tu anonimato.</li>
+      </ol>
+      
+      <div class="warning-box">
+        <h3>⚠️ NUNCA Hagas Esto en Tor</h3>
+        <ul>
+          <li>Iniciar sesión con cuentas personales (Gmail, Facebook, etc.)</li>
+          <li>Abrir documentos descargados dentro de Tor Browser (pueden contener identificadores)</li>
+          <li>Usar plugins o extensiones adicionales</li>
+          <li>Maximizar la ventana (el tamaño de ventana puede identificarte)</li>
+          <li>Usar Tor y VPN juntos sin entender cómo interactúan</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="tails">
+      <h2>Tails OS: El Sistema que No Deja Rastro</h2>
+      <p>Tails (The Amnesic Incognito Live System) es un sistema operativo completo que arranca desde USB y funciona independientemente de tu disco duro. Fue usado por Edward Snowden y periodistas como Laura Poitras y Glenn Greenwald en sus comunicaciones sobre vigilancia masiva de la NSA.</p>
+      
+      <h3>¿Por Qué Usar Tails?</h3>
+      <ul>
+        <li><strong>Amnesia:</strong> No deja rastros en la computadora (a menos que configures persistencia)</li>
+        <li><strong>Todo el tráfico va por Tor:</strong> Protección automática de red</li>
+        <li><strong>Herramientas preinstaladas:</strong> OpenPGP, KeePassXC, OnionShare, etc.</li>
+        <li><strong>Portabilidad:</strong> Funciona en casi cualquier computadora</li>
+      </ul>
+      
+      <h3>Instalación Segura (Para Windows)</h3>
+      <ol>
+        <li>Descarga Tails desde <code>tails.net</code> usando Tor Browser</li>
+        <li>Verifica la imagen usando la firma criptográfica (sigue las instrucciones oficiales)</li>
+        <li>Usa <code>balenaEtcher</code> o <code>Rufus</code> para grabar el USB (mínimo 8GB)</li>
+        <li>Reinicia la computadora y arranca desde el USB (configura el BIOS/UEFI si es necesario)</li>
+        <li>En el primer arranque, NO configures persistencia hasta entender las implicaciones</li>
+      </ol>
+      
+      <div class="warning-box">
+        <h3>⚠️ Advertencias Críticas de Tails</h3>
+        <p>Según la documentación oficial de Tails:</p>
+        <ul>
+          <li><strong>Tails es seguro pero no mágico:</strong> No puede protegerte si tu computadora base ya está comprometida</li>
+          <li><strong>Instala desde un sistema confiable:</strong> Si tu Windows tiene malware, la instalación de Tails podría estar comprometida</li>
+          <li><strong>El hardware puede exponerte:</strong> Firmware malicioso, keyloggers físicos, o cámaras pueden capturar información incluso con Tails</li>
+          <li><strong>Persistencia = riesgo:</strong> El almacenamiento persistente cifrado es útil, pero si alguien captura tu USB desbloqueado, pierdes el anonimato</li>
+        </ul>
+      </div>
+      
+      <div class="tip-box">
+        <h3>💡 Mejores Prácticas</h3>
+        <ul>
+          <li>Usa Tails en una computadora dedicada comprada en efectivo (sin registro a tu nombre)</li>
+          <li>Nunca conectes el USB de Tails a una computadora en la que confíes poco</li>
+          <li>Considera tener múltiples USBs para diferentes propósitos</li>
+          <li>Destruye USBs físicamente cuando ya no los necesites</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="openpgp">
+      <h2>OpenPGP con Kleopatra: Cifrado de Extremo a Extremo</h2>
+      <p>OpenPGP (Pretty Good Privacy) usa criptografía de clave pública. Es el estándar de oro para cifrado de mensajes y archivos.</p>
+      
+      <h3>Conceptos Básicos</h3>
+      <ul>
+        <li><strong>Clave pública:</strong> La compartes libremente. Otros la usan para cifrarte mensajes que solo tú puedes leer.</li>
+        <li><strong>Clave privada:</strong> NUNCA la compartes. La usas para descifrar mensajes y firmar digitalmente.</li>
+        <li><strong>Firma digital:</strong> Prueba que un mensaje viene de ti y no ha sido alterado.</li>
+      </ul>
+      
+      <p><strong>Metáfora:</strong> Tu clave pública es un buzón de correos. Cualquiera puede depositar cartas (mensajes cifrados), pero solo tú tienes la llave (clave privada) para abrir el buzón.</p>
+      
+      <h3>Usando Kleopatra en Windows</h3>
+      <ol>
+        <li>Descarga e instala <strong>Gpg4win</strong> desde <code>gpg4win.org</code> (incluye Kleopatra)</li>
+        <li>Abre Kleopatra → "Nuevo par de claves" → Selecciona "Crear par de claves OpenPGP personal"</li>
+        <li>Ingresa tu nombre y email (considera usar una identidad pseudónima)</li>
+        <li>Elige una frase de contraseña fuerte (mínimo 12 caracteres, usa Diceware)</li>
+        <li>Exporta tu clave pública (la compartirás) y respalda tu clave privada en un lugar seguro offline</li>
+      </ol>
+      
+      <h3>Cifrando y Firmando Mensajes</h3>
+      <pre>1. Arrastra un archivo a Kleopatra
+2. Selecciona "Sign/Encrypt" (Firmar/Cifrar)
+3. Elige el destinatario (su clave pública)
+4. Marca "Sign" para probar que viene de ti
+5. Envía el archivo .gpg resultante</pre>
+      
+      <div class="warning-box">
+        <h3>⚠️ Protección de la Clave Privada</h3>
+        <ul>
+          <li><strong>Genera claves en Tails o en una máquina offline</strong> (airgap)</li>
+          <li>Nunca almacenes la clave privada en la nube sin cifrado adicional</li>
+          <li>Considera usar un token hardware (YubiKey) para almacenar la clave</li>
+          <li>Crea un certificado de revocación y guárdalo en un lugar seguro separado</li>
+          <li>Si tu clave se compromete, revócala inmediatamente y notifica a tus contactos</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="proton">
+      <h2>ProtonMail: Correo Cifrado</h2>
+      <p>ProtonMail es un servicio de correo con cifrado de extremo a extremo. Los servidores están en Suiza, bajo leyes de privacidad más estrictas que en EE.UU.</p>
+      
+      <h3>Uso Máximo de Privacidad</h3>
+      <ul>
+        <li><strong>Acceso vía Tor:</strong> ProtonMail tiene una dirección .onion. Úsala con Tor Browser para ocultar tu IP.</li>
+        <li><strong>Registra sin datos personales:</strong> Usa un nombre falso, no vincules teléfono ni email de recuperación si es posible.</li>
+        <li><strong>Proton Bridge:</strong> Para usar clientes como Thunderbird (requiere cuenta de pago). Bridge crea un puente local cifrado.</li>
+        <li><strong>Cifrado PGP:</strong> ProtonMail soporta OpenPGP. Puedes enviar emails cifrados a usuarios fuera de Proton compartiendo tu clave pública.</li>
+      </ul>
+      
+      <div class="warning-box">
+        <h3>⚠️ Limitaciones</h3>
+        <ul>
+          <li><strong>Metadata:</strong> ProtonMail ve quién envía a quién y cuándo (aunque no el contenido cifrado)</li>
+          <li><strong>Subject/Asunto:</strong> No está cifrado por defecto. No pongas información sensible ahí.</li>
+          <li><strong>Órdenes judiciales:</strong> Aunque ProtonMail tiene buenas políticas, puede ser obligado a entregar metadatos bajo orden legal suiza</li>
+          <li><strong>Correos a no-Proton:</strong> Si el destinatario no usa cifrado, el correo puede ser interceptado fuera de Proton</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="airgap">
+      <h2>Airgaps: Separación Física de Sistemas</h2>
+      <p>Un airgap (brecha de aire) es una computadora que NUNCA se conecta a internet ni a redes. Se usa para las operaciones más sensibles: generar claves criptográficas y firmar transacciones o mensajes.</p>
+      
+      <h3>Flujo de Trabajo con Airgap</h3>
+      <ol>
+        <li><strong>Máquina offline (airgapped):</strong>
+          <ul>
+            <li>Generas tu clave PGP privada (idealmente en Tails en modo offline)</li>
+            <li>Redactas mensajes</li>
+            <li>Cifras y firmas usando las claves públicas de tus contactos</li>
+            <li>Solo exportas el archivo cifrado (.gpg)</li>
+          </ul>
+        </li>
+        <li><strong>USB de transferencia:</strong>
+          <ul>
+            <li>Usa un USB de un solo uso o formateado cada vez</li>
+            <li>Solo mueves archivos cifrados, nunca claves privadas</li>
+            <li>Considera usar un USB de solo lectura (write-protected)</li>
+          </ul>
+        </li>
+        <li><strong>Máquina online:</strong>
+          <ul>
+            <li>Copia el archivo cifrado del USB</li>
+            <li>Envía el mensaje vía ProtonMail sobre Tor</li>
+            <li>Nunca proceses archivos no cifrados aquí</li>
+          </ul>
+        </li>
+      </ol>
+      
+      <h3>Ventajas</h3>
+      <ul>
+        <li>Tu clave privada jamás toca una red</li>
+        <li>Protección contra malware que intente robar claves</li>
+        <li>Incluso si tu máquina online es comprometida, el atacante solo ve mensajes cifrados</li>
+      </ul>
+      
+      <div class="warning-box">
+        <h3>⚠️ Riesgos del Airgap</h3>
+        <ul>
+          <li><strong>USB comprometido:</strong> Un USB puede contener malware que infecte ambas máquinas. Solución: usa Tails en ambos lados o USBs de solo lectura.</li>
+          <li><strong>Exfiltración de datos:</strong> Ataques sofisticados pueden usar señales electromagnéticas, sonido ultrasónico, o modulación de LEDs para extraer datos. Esto requiere capacidades de nivel estatal.</li>
+          <li><strong>Cadena de confianza:</strong> Si compras una máquina airgapped que viene con firmware comprometido, el airgap es inútil. Compra hardware en efectivo y considera firmware libre.</li>
+          <li><strong>Error humano:</strong> Conectar accidentalmente el USB equivocado o la máquina a internet rompe el airgap.</li>
+        </ul>
+      </div>
+      
+      <div class="tip-box">
+        <h3>💡 Airgap Extremo</h3>
+        <p>Para máxima seguridad:</p>
+        <ul>
+          <li>Usa una computadora sin WiFi ni Bluetooth (remueve físicamente las antenas)</li>
+          <li>Trabaja en una Faraday cage (jaula de Faraday) para bloquear emisiones electromagnéticas</li>
+          <li>Usa un monitor externo en lugar de la pantalla integrada (las pantallas irradian señales RF)</li>
+          <li>Genera claves usando dados físicos (Diceware) en lugar de generadores pseudoaleatorios</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="opsec">
+      <h2>Seguridad Operacional (OPSEC)</h2>
+      <p>La tecnología solo es parte de la ecuación. La seguridad operacional se refiere a cómo te comportas. La mayoría de las fallas de seguridad son por error humano, no por tecnología débil.</p>
+      
+      <h3>Reglas de Oro</h3>
+      <ul>
+        <li><strong>Compartimentalización:</strong> Mantén identidades separadas. No uses el mismo email, nombre de usuario, o estilo de escritura en contextos diferentes.</li>
+        <li><strong>Metadata mata:</strong> Según Snowden: "Los metadatos pueden revelar más que el contenido". Horarios, patrones de comunicación, ubicaciones... todo cuenta.</li>
+        <li><strong>Anonimato vs. Pseudonimato:</strong> El anonimato total es casi imposible. El pseudonimato (identidad consistente pero no vinculada a ti) es más realista.</li>
+        <li><strong>Nunca reutilices contraseñas:</strong> Usa un gestor de contraseñas (KeePassXC en Tails, Bitwarden, 1Password).</li>
+        <li><strong>Autenticación de dos factores (2FA):</strong> Prefiere apps como Aegis o hardware tokens (YubiKey) sobre SMS.</li>
+        <li><strong>Análisis de estilo de escritura:</strong> Los algoritmos pueden identificarte por cómo escribes. Varía tu estilo, longitud de oraciones, y vocabulario.</li>
+        <li><strong>Límite de confianza:</strong> Nunca confíes completamente en una sola herramienta o servicio. Usa múltiples capas de seguridad.</li>
+      </ul>
+      
+      <h3>Vectores de Ataque Comunes</h3>
+      <ul>
+        <li><strong>Phishing:</strong> Correos falsos que imitan servicios legítimos. Siempre verifica URLs.</li>
+        <li><strong>Ingeniería social:</strong> Manipulación psicológica. El atacante puede fingir ser soporte técnico, autoridad, o conocido.</li>
+        <li><strong>Ataques de día cero:</strong> Vulnerabilidades desconocidas. Mantén todo actualizado, pero asume que siempre hay vulnerabilidades sin parchear.</li>
+        <li><strong>Ataques físicos:</strong> Alguien puede instalar keyloggers, cámaras ocultas, o robar tus dispositivos. Seguridad física es tan importante como digital.</li>
+        <li><strong>Correlación de tiempo:</strong> Si siempre te conectas a ProtonMail justo después de desconectarte de Facebook, un adversario puede correlacionar identidades.</li>
+      </ul>
+    </section>
+
+    <section id="limitaciones">
+      <h2>Limitaciones Críticas: Qué NO Puede Hacer la Seguridad</h2>
+      
+      <div class="warning-box">
+        <h3>⚠️ Estas herramientas NO te protegen si:</h3>
+        <ul>
+          <li><strong>Tu computadora tiene malware:</strong> Un keylogger puede capturar todo, incluyendo contraseñas de claves PGP. Usa Tails o una máquina limpia.</li>
+          <li><strong>Confías en hardware comprometido:</strong> Firmware malicioso (Intel ME, BIOS backdoors) opera por debajo del sistema operativo.</li>
+          <li><strong>Cometes errores humanos:</strong> Copiar y pegar en el lugar equivocado, iniciar sesión en la cuenta incorrecta, enviar a la persona equivocada.</li>
+          <li><strong>Tu adversario tiene recursos ilimitados:</strong> Los estados-nación pueden hacer ataques de correlación de tráfico, obligar a compañías a entregar datos, o usar ataques de día cero.</li>
+          <li><strong>Ya estás identificado:</strong> Si las autoridades saben quién eres, Tor no borrará ese conocimiento. Solo protege comunicaciones futuras.</li>
+          <li><strong>No sigues protocolos consistentemente:</strong> Un solo desliz puede deshacer meses de precauciones.</li>
+        </ul>
+      </div>
+      
+      <h3>Protección Realista vs. Paranoia</h3>
+      <p>Es importante calibrar tu nivel de seguridad. Para la mayoría:</p>
+      <ul>
+        <li>Contraseñas fuertes + gestor de contraseñas = 80% de la seguridad</li>
+        <li>2FA = otro 15%</li>
+        <li>Mantener software actualizado = 4%</li>
+        <li>No hacer clic en enlaces sospechosos = 1%</li>
+      </ul>
+      <p>Tor, Tails, y airgaps son para cuando tu modelo de amenazas incluye adversarios sofisticados (gobiernos, organizaciones criminales, acoso dirigido).</p>
+    </section>
+
+    <section id="recursos">
+      <h2>Recursos Adicionales y Lecturas Recomendadas</h2>
+      
+      <h3>Guías Oficiales</h3>
+      <ul>
+        <li><strong>EFF Surveillance Self-Defense:</strong> <code>ssd.eff.org</code> — Guía completa y actualizada sobre privacidad digital</li>
+        <li><strong>Documentación de Tails:</strong> <code>tails.net/doc/</code> — Guía oficial con mejores prácticas</li>
+        <li><strong>Tor Project:</strong> <code>torproject.org</code> — Incluye FAQs sobre anonimato y limitaciones</li>
+        <li><strong>GnuPG Documentation:</strong> <code>gnupg.org</code> — Documentación técnica de OpenPGP</li>
+        <li><strong>ProtonMail Security Model:</strong> Disponible en su blog oficial</li>
+      </ul>
+      
+      <h3>Herramientas Complementarias</h3>
+      <ul>
+        <li><strong>KeePassXC:</strong> Gestor de contraseñas offline y open source</li>
+        <li><strong>VeraCrypt:</strong> Cifrado de volúmenes completos (reemplazo de TrueCrypt)</li>
+        <li><strong>OnionShare:</strong> Compartir archivos anónimamente a través de Tor</li>
+        <li><strong>Signal:</strong> Mensajería cifrada de extremo a extremo para comunicación en tiempo real</li>
+        <li><strong>Qubes OS:</strong> Sistema operativo basado en aislamiento de VMs para usuarios avanzados</li>
+        <li><strong>Diceware:</strong> Método para generar contraseñas usando dados físicos</li>
+      </ul>
+      
+      <h3>Lecturas Avanzadas</h3>
+      <ul>
+        <li><strong>"No Place to Hide" por Glenn Greenwald:</strong> Sobre las revelaciones de Snowden y vigilancia masiva</li>
+        <li><strong>"The Art of Invisibility" por Kevin Mitnick:</strong> Privacidad digital práctica</li>
+        <li><strong>"Security Engineering" por Ross Anderson:</strong> Texto académico sobre diseño de sistemas seguros (disponible gratis)</li>
+        <li><strong>OWASP Top 10:</strong> Vulnerabilidades más comunes en aplicaciones web</li>
+      </ul>
+      
+      <div class="tip-box">
+        <h3>💡 Comunidad y Aprendizaje Continuo</h3>
+        <p>La seguridad evoluciona constantemente. Nuevas vulnerabilidades se descubren, herramientas se actualizan, y técnicas de ataque mejoran. Mantente informado:</p>
+        <ul>
+          <li>Sigue blogs de seguridad (Krebs on Security, Schneier on Security)</li>
+          <li>Revisa actualizaciones de tus herramientas regularmente</li>
+          <li>Participa en comunidades (Reddit r/privacy, r/opsec, foros de Tails)</li>
+          <li>Practica en un entorno de prueba antes de aplicar en situaciones reales</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="checklist">
+      <h2>Checklist de Seguridad Rápida</h2>
+      
+      <h3>Nivel Básico (Para Todos)</h3>
+      <ul>
+        <li>☐ Usar contraseñas únicas y fuertes (mínimo 12 caracteres)</li>
+        <li>☐ Activar 2FA en todas las cuentas importantes</li>
+        <li>☐ Mantener sistema operativo y aplicaciones actualizadas</li>
+        <li>☐ No hacer clic en enlaces sospechosos o abrir adjuntos desconocidos</li>
+        <li>☐ Usar HTTPS (candado en el navegador) para sitios sensibles</li>
+        <li>☐ Hacer backups cifrados regularmente</li>
+      </ul>
+      
+      <h3>Nivel Intermedio (Privacidad Mejorada)</h3>
+      <ul>
+        <li>☐ Instalar y usar Tor Browser para búsquedas sensibles</li>
+        <li>☐ Crear cuenta ProtonMail para comunicaciones privadas</li>
+        <li>☐ Usar gestor de contraseñas (KeePassXC o Bitwarden)</li>
+        <li>☐ Configurar OpenPGP con Kleopatra para cifrar archivos importantes</li>
+        <li>☐ Separar identidades online (no usar misma cuenta para todo)</li>
+        <li>☐ Revisar permisos de aplicaciones móviles</li>
+      </ul>
+      
+      <h3>Nivel Avanzado (Alto Riesgo)</h3>
+      <ul>
+        <li>☐ Instalar Tails en USB y practicar su uso</li>
+        <li>☐ Generar claves PGP en entorno offline (Tails o airgap)</li>
+        <li>☐ Configurar máquina airgapped para operaciones sensibles</li>
+        <li>☐ Usar ProtonMail vía dirección .onion con Tor</li>
+        <li>☐ Implementar protocolo estricto de compartimentalización</li>
+        <li>☐ Considerar hardware security token (YubiKey)</li>
+        <li>☐ Documentar y seguir procedimientos OPSEC escritos</li>
+        <li>☐ Realizar auditorías regulares de seguridad</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p><strong>Descargo de responsabilidad:</strong> Este documento es puramente educativo. La información se presenta tal como está, sin garantías. La seguridad digital es un proceso continuo que requiere vigilancia constante. Ninguna herramienta o práctica garantiza protección absoluta.</p>
+      <p>Las herramientas y técnicas aquí descritas deben usarse de manera legal y ética. El conocimiento de seguridad debe servir para proteger, no para dañar.</p>
+      <p style="margin-top: 16px;">Basado en documentación oficial de: EFF, Tails Project, Tor Project, GnuPG, ProtonMail</p>
+      <p style="margin-top: 8px; font-size: 12px;">Última actualización: Octubre 2025</p>
+    </footer>
+  </div>
+
+  <script>
+    function toggleMenu() {
+      const menu = document.getElementById('menu');
+      const overlay = document.getElementById('overlay');
+      menu.classList.toggle('show');
+      overlay.classList.toggle('show');
+    }
+    
+    // Cerrar menú al hacer clic en un enlace
+    document.querySelectorAll('.menu a').forEach(link => {
+      link.addEventListener('click', () => {
+        toggleMenu();
+      });
+    });
+    
+    // Cerrar menú con tecla ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const menu = document.getElementById('menu');
+        const overlay = document.getElementById('overlay');
+        if (menu.classList.contains('show')) {
+          toggleMenu();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

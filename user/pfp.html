@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Random PFP Generator - Fractal Backgrounds (Optimized)</title>
+  <style>
+    body { margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#fff; font-family:monospace; color:#111 }
+    .container { text-align:center }
+    canvas { background:#fff; margin:20px; border:1px solid #111 }
+    button { padding:10px 20px; margin:10px; border:1px solid #111; border-radius:0; cursor:pointer; font-size:14px; font-weight:bold; background:#fff; color:#111 }
+    button:hover { background:#f5f5f5 }
+    .info { font-size:12px; max-width:600px; margin:10px auto; text-align:left; background:#fafafa; padding:10px; border:1px solid #ddd }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <canvas id="c" width="500" height="500"></canvas>
+    <div>
+      <button id="regen">Generate</button>
+      <button id="download">Download PNG</button>
+    </div>
+    <div class="info" id="info"></div>
+  </div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const infoDiv = document.getElementById('info');
+const W = canvas.width; const H = canvas.height;
+
+// single temporary canvas for css color parsing (avoid recreating each call)
+const _tmpCanvas = document.createElement('canvas'); _tmpCanvas.width = 1; _tmpCanvas.height = 1; const _tmpCtx = _tmpCanvas.getContext('2d');
+
+// seeded PRNG (Mulberry32)
+function mulberry32(seed) {
+  return function() {
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
+function seededRand(rng, min, max) { return rng()*(max-min)+min }
+function seededRandInt(rng,min,max){return Math.floor(seededRand(rng,min,max+1))}
+function seededChoice(rng,arr){return arr[Math.floor(rng()*arr.length)]}
+
+const algorithms = ['pixels','circles','triangles','organic','stars','spirals','waves'];
+const mirrorModes = ['2','4','radial','kaleidoscope'];
+const colorSchemes = ['monochrome','complementary','triadic','analogous','rainbow','neon','pastel'];
+const backgroundTypes = ['solid','gradient','radial','noise','fractal-noise','gradient-mesh','voronoi','stripes','concentric','sierpinski'];
+
+function generateRandomParams(seed) {
+  const rng = mulberry32(seed);
+  return {
+    seed, rng,
+    grid: seededRandInt(rng,6,20),
+    algorithm: seededChoice(rng,algorithms),
+    mirrorMode: seededChoice(rng,mirrorModes),
+    colorScheme: seededChoice(rng,colorSchemes),
+    backgroundType: seededChoice(rng,backgroundTypes),
+    density: seededRand(rng,0.25,0.8),
+    baseHue: seededRandInt(rng,0,360),
+    saturation: seededRandInt(rng,40,95),
+    brightness: seededRandInt(rng,30,75),
+    colorCount: seededRandInt(rng,3,8),
+    hueVariation: seededRandInt(rng,20,140),
+    shapeSize: seededRand(rng,0.45,1.05),
+    rotation: seededRandInt(rng,0,360),
+    opacity: seededRand(rng,0.6,1.0),
+    strokeWidth: seededRandInt(rng,0,4),
+    distortion: seededRand(rng,0,0.45),
+    complexity: seededRand(rng,0.25,1.0),
+    layering: seededRandInt(rng,1,4),
+    blendMode: seededChoice(rng,['source-over','multiply','screen','overlay','lighter']),
+    // background specific
+    noiseOctaves: seededRandInt(rng,3,6),
+    noiseFalloff: seededRand(rng,0.45,0.75),
+    gradientStops: seededRandInt(rng,2,5),
+    meshPoints: seededRandInt(rng,6,18),
+    stripeCount: seededRandInt(rng,6,18),
+    sierpinskiDepth: seededRandInt(rng,4,7)
+  };
+}
+
+function createColorPalette(params) {
+  const {baseHue, saturation, brightness, colorCount, hueVariation, colorScheme} = params;
+  const rng = params.rng;
+  const paletteObjs = [];
+  function wrap(h){ return ((h % 360) + 360) % 360 }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)) }
+  function hslCss(h,s,l){ return `hsl(${Math.round(wrap(h))},${Math.round(clamp(s,0,100))}%,${Math.round(clamp(l,0,100))}%)` }
+  function rgbLuminance(rgb){
+    const srgb = rgb.map(v => v/255).map(v => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4));
+    return 0.2126*srgb[0] + 0.7152*srgb[1] + 0.0722*srgb[2];
+  }
+  const golden = 137.507764;
+  const center = baseHue;
+  switch (colorScheme) {
+    case 'monochrome':
+      for (let i=0;i<colorCount;i++){ const offset = (i - (colorCount-1)/2) * (hueVariation/colorCount) * 0.2; const h = center + offset; const s = clamp(saturation * (0.85 + (i/colorCount)*0.3), 10, 100); const l = clamp(brightness + (i - (colorCount-1)/2) * 6, 6, 94); paletteObjs.push({h,s,l}); }
+      break;
+    case 'complementary':
+      for (let i=0;i<colorCount;i++){ const side = (i % 2 === 0) ? 0 : 180; const indexBias = Math.floor(i/2) - Math.floor((colorCount-1)/4); const h = center + side + indexBias * (hueVariation/Math.max(1,colorCount/2)); const s = clamp(saturation + (indexBias*3), 30, 100); const l = clamp(brightness + (indexBias*5), 8, 92); paletteObjs.push({h,s,l}); }
+      break;
+    case 'triadic':
+      for (let i=0;i<colorCount;i++){ const base = [0,120,240][i%3]; const group = Math.floor(i/3) - Math.floor((colorCount-1)/6); const h = center + base + group * (hueVariation/Math.max(1,Math.ceil(colorCount/3))); const s = clamp(saturation + (group*4), 30, 100); const l = clamp(brightness + (group*5), 8, 92); paletteObjs.push({h,s,l}); }
+      break;
+    case 'analogous':
+      const span = hueVariation;
+      for (let i=0;i<colorCount;i++){ const t = (i/(colorCount-1)) - 0.5; const h = center + t * span; const s = clamp(saturation * (0.85 + Math.abs(t)*0.3), 15, 100); const l = clamp(brightness + t * 12, 6, 94); paletteObjs.push({h,s,l}); }
+      break;
+    case 'rainbow':
+      for (let i=0;i<colorCount;i++){ const h = center + i * golden; const s = clamp( Math.max(60, saturation), 40, 100); const l = clamp( brightness + (Math.sin(i*2.3 + rng())*8), 10, 90); paletteObjs.push({h,s,l}); }
+      break;
+    case 'neon':
+      for (let i=0;i<colorCount;i++){ const h = center + i * (hueVariation / Math.max(1,colorCount)); const s = 100; const l = clamp(55 + Math.sin(i*1.9 + rng())*8, 45, 70); paletteObjs.push({h,s,l}); }
+      break;
+    case 'pastel':
+      for (let i=0;i<colorCount;i++){ const h = center + (i - (colorCount-1)/2) * (hueVariation/colorCount); const s = clamp( Math.max(30, saturation*0.45), 15, 55); const l = clamp(80 + (i - (colorCount-1)/2)*4, 70, 92); paletteObjs.push({h,s,l}); }
+      break;
+    default:
+      const arc = Math.min(140, Math.max(20, hueVariation));
+      for (let i=0;i<colorCount;i++){ const t = (i/(colorCount-1)) - 0.5; const h = center + t * arc; const s = clamp(saturation * (0.8 + Math.abs(t)*0.25), 12, 100); const l = clamp(brightness + t*10, 6, 94); paletteObjs.push({h,s,l}); }
+  }
+
+  const lums = paletteObjs.map(p => { const rgb = hslToRgb(wrap(p.h)/360, clamp(p.s,0,100)/100, clamp(p.l,0,100)/100); return rgbLuminance(rgb); });
+  const minL = Math.min(...lums); const maxL = Math.max(...lums);
+  if (maxL - minL < 0.08) { for (let i=0;i<paletteObjs.length;i++){ const t = (i/(paletteObjs.length-1)) - 0.5; paletteObjs[i].l = clamp(brightness + t * Math.max(10, 18 * (1 - (maxL-minL))), 6, 94); } }
+
+  for (let i=0;i<paletteObjs.length;i++){
+    const p = paletteObjs[i];
+    const rgb = hslToRgb(wrap(p.h)/360, clamp(p.s,0,100)/100, clamp(p.l,0,100)/100);
+    const lum = rgbLuminance(rgb);
+    if (lum < 0.12) p.s = clamp(p.s * 0.9, 8, 100);
+    if (lum > 0.88) p.s = clamp(p.s * 0.85, 8, 100);
+    p.h = wrap(p.h + Math.sin(i * 2.0 + (rng()*2-1)) * (hueVariation*0.03));
+  }
+
+  return paletteObjs.map(p => hslCss(p.h, p.s, p.l));
+}
+
+// Utility interpolation
+function lerp(a,b,t){return a + (b-a)*t}
+function smoothstep(t){return t*t*(3-2*t)}
+
+// Value noise grid + fractal noise
+function makeValueGrid(gw,gh,rng){
+  const grid = new Float32Array((gw+1)*(gh+1));
+  for (let y=0;y<=gh;y++) for (let x=0;x<=gw;x++) grid[y*(gw+1)+x] = rng();
+  return grid;
+}
+function sampleValueGrid(grid,gw,gh,x,y){
+  const x0 = Math.floor(x), y0 = Math.floor(y);
+  const x1 = x0+1, y1 = y0+1;
+  const sx = smoothstep(x - x0), sy = smoothstep(y - y0);
+  const stride = gw+1;
+  const v00 = grid[(y0 % (gh+1))*stride + (x0 % stride)];
+  const v10 = grid[(y0 % (gh+1))*stride + (x1 % stride)];
+  const v01 = grid[(y1 % (gh+1))*stride + (x0 % stride)];
+  const v11 = grid[(y1 % (gh+1))*stride + (x1 % stride)];
+  return lerp(lerp(v00,v10,sx), lerp(v01,v11,sx), sy);
+}
+
+function fractalNoise2D(x,y,baseScale,octaves,falloff,grids){
+  let value = 0, amp = 1, freq = 1;
+  for (let o=0;o<octaves;o++){
+    const gx = grids[o];
+    value += sampleValueGrid(gx.grid, gx.gw, gx.gh, x*freq/baseScale, y*freq/baseScale) * amp;
+    amp *= falloff; freq *= 2;
+  }
+  return value;
+}
+
+function prepareGrids(params){
+  const grids = [];
+  const rng = params.rng;
+  const baseScale = Math.max(32,Math.floor(W/8));
+  for (let o=0;o<params.noiseOctaves;o++){
+    const scale = baseScale/(1<<o);
+    const gw = Math.max(1,Math.ceil(W/scale));
+    const gh = Math.max(1,Math.ceil(H/scale));
+    grids.push({grid: makeValueGrid(gw,gh,rng), gw, gh});
+  }
+  return {grids, baseScale};
+}
+
+// compute noise map once when multiple per-pixel noise samples are needed
+function computeNoiseMap(params, prepared){
+  const {grids, baseScale} = prepared; const octaves = params.noiseOctaves; const falloff = params.noiseFalloff;
+  const map = new Float32Array(W*H);
+  let idx = 0;
+  for (let y=0;y<H;y++){
+    for (let x=0;x<W;x++){
+      map[idx++] = fractalNoise2D(x,y,baseScale,octaves,falloff,grids);
+    }
+  }
+  return {map, baseScale};
+}
+
+function drawBackground(params){
+  const p = params; const rng = p.rng;
+  ctx.clearRect(0,0,W,H);
+  if (p.backgroundType === 'solid'){
+    ctx.fillStyle = `hsl(${p.baseHue},${Math.max(10,p.saturation/3)}%,${Math.min(95,p.brightness+10)}%)`;
+    ctx.fillRect(0,0,W,H);
+    return;
+  }
+
+  const prepared = prepareGrids(p);
+  const grids = prepared.grids;
+  const baseScale = prepared.baseScale;
+
+  // compute noise map for types that need repeated access
+  let noiseData = null;
+  if (['noise','fractal-noise','gradient','voronoi','stripes','concentric'].includes(p.backgroundType)){
+    noiseData = computeNoiseMap(p, prepared).map;
+  }
+
+  if (p.backgroundType === 'noise'){
+    const id = ctx.createImageData(W,H); const data = id.data; let i=0; let nidx=0;
+    for (let y=0;y<H;y++){
+      for (let x=0;x<W;x++){
+        const v = noiseData[nidx++];
+        const g = Math.floor(200 + v*55);
+        data[i++]=g; data[i++]=g; data[i++]=g; data[i++]=255;
+      }
+    }
+    ctx.putImageData(id,0,0);
+    return;
+  }
+
+  if (p.backgroundType === 'fractal-noise'){
+    const id = ctx.createImageData(W,H); const data = id.data; let di=0; let nidx=0;
+    for (let y=0;y<H;y++){
+      for (let x=0;x<W;x++){
+        const n = noiseData[nidx++];
+        const norm = Math.max(0,Math.min(1, (n/1.5)));
+        const hue = (p.baseHue + (norm-0.5)*p.hueVariation*1.5 + 360) % 360;
+        const light = Math.max(6,Math.min(92, p.brightness + (norm-0.5)*30));
+        const sat = Math.max(10,Math.min(100, p.saturation + (norm-0.5)*20));
+        const rgb = hslToRgb(hue/360, sat/100, light/100);
+        data[di++]=rgb[0]; data[di++]=rgb[1]; data[di++]=rgb[2]; data[di++]=255;
+      }
+    }
+    ctx.putImageData(id,0,0);
+    return;
+  }
+
+  if (p.backgroundType === 'gradient'){
+    const stops = p.gradientStops;
+    const base = ctx.createLinearGradient(0,0,W,H);
+    for (let i=0;i<stops;i++){
+      const t = i/(stops-1);
+      const hue = (p.baseHue + (t-0.5)*p.hueVariation + 360) % 360;
+      const light = Math.max(10, Math.min(90, p.brightness + (t-0.5)*20));
+      base.addColorStop(t, `hsl(${hue},${p.saturation}%,${light}%)`);
+    }
+    ctx.fillStyle = base; ctx.fillRect(0,0,W,H);
+    const id = ctx.getImageData(0,0,W,H); const data = id.data; let di=0; let nidx=0;
+    for (let y=0;y<H;y++) for (let x=0;x<W;x++){
+      const n = noiseData[nidx++];
+      const t = (x/W);
+      const hue = (p.baseHue + (t-0.5)*p.hueVariation + (n-0.5)*20 + 360) % 360;
+      const light = Math.max(8, Math.min(92, p.brightness + (t-0.5)*18 + (n-0.5)*18));
+      const rgb = hslToRgb(hue/360, p.saturation/100, light/100);
+      data[di++]=Math.floor(rgb[0]); data[di++]=Math.floor(rgb[1]); data[di++]=Math.floor(rgb[2]); data[di++]=255;
+    }
+    ctx.putImageData(id,0,0);
+    return;
+  }
+
+  if (p.backgroundType === 'gradient-mesh'){
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = `hsl(${p.baseHue},${p.saturation}%,${p.brightness}%)`;
+    ctx.fillRect(0,0,W,H);
+    const layers = Math.max(3, p.gradientStops);
+    for (let i=0;i<layers;i++){
+      const gx = ctx.createRadialGradient(seededRand(rng,0,W), seededRand(rng,0,H), seededRand(rng,50,120), seededRand(rng,0,W), seededRand(rng,0,H), seededRand(rng,150,400));
+      const hue = (p.baseHue + (i-layers/2)*(p.hueVariation/layers) + 360) % 360;
+      gx.addColorStop(0, `hsla(${hue},${p.saturation}%,${Math.min(90,p.brightness+15)}%,${ seededRand(rng,0.3,0.9)})`);
+      gx.addColorStop(1, `hsla(${(hue+40)%360},${p.saturation}%,${Math.max(6,p.brightness-20)}%,${ seededRand(rng,0.2,0.6)})`);
+      ctx.globalCompositeOperation = seededChoice(rng, ['lighter','overlay','multiply']);
+      ctx.fillStyle = gx; ctx.fillRect(0,0,W,H);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    return;
+  }
+
+  if (p.backgroundType === 'voronoi'){
+    const paletteCache = createColorPalette(p); // called each time originally, but caching CSS->RGB conversion only
+    const points = [];
+    for (let i=0;i<p.meshPoints;i++) points.push({x:Math.floor(rng()*W), y:Math.floor(rng()*H), c: seededChoice(rng, paletteCache)});
+    const id = ctx.createImageData(W,H); const data = id.data; let di=0; let pidx=0;
+    for (let y=0;y<H;y++){
+      for (let x=0;x<W;x++){
+        let best = Infinity, idx = 0;
+        for (let i=0;i<points.length;i++){
+          const dx = x-points[i].x, dy = y-points[i].y; const d = dx*dx+dy*dy;
+          if (d<best){ best = d; idx = i }
+        }
+        const n = noiseData[pidx++];
+        const col = cssToRgb(points[idx].c);
+        data[di++]=Math.min(255,Math.floor(col[0]+(n-0.5)*30)); data[di++]=Math.min(255,Math.floor(col[1]+(n-0.5)*30)); data[di++]=Math.min(255,Math.floor(col[2]+(n-0.5)*30)); data[di++]=255;
+      }
+    }
+    ctx.putImageData(id,0,0);
+    return;
+  }
+
+  if (p.backgroundType === 'stripes'){
+    const stripes = p.stripeCount;
+    const id = ctx.createImageData(W,H); const data = id.data; let di=0; let nidx=0;
+    for (let y=0;y<H;y++){
+      for (let x=0;x<W;x++){
+        const t = Math.sin(x/ W * Math.PI * stripes + noiseData[nidx++]*6);
+        const hue = (p.baseHue + (t*0.5+0.5-0.5)*p.hueVariation + 360)%360;
+        const light = p.brightness + (t*0.5)*20;
+        const rgb = hslToRgb(hue/360,p.saturation/100,Math.max(0,Math.min(1,light/100)));
+        data[di++]=rgb[0]; data[di++]=rgb[1]; data[di++]=rgb[2]; data[di++]=255;
+      }
+    }
+    ctx.putImageData(id,0,0);
+    return;
+  }
+
+  if (p.backgroundType === 'concentric'){
+    const cx = W/2, cy = H/2;
+    const id = ctx.createImageData(W,H); const data = id.data; let di=0; let nidx=0;
+    const maxd = Math.hypot(cx,cy);
+    for (let y=0;y<H;y++) for (let x=0;x<W;x++){
+      const d = Math.hypot(x-cx,y-cy)/maxd;
+      const n = noiseData[nidx++];
+      const band = Math.sin(d*Math.PI*6 + n*6);
+      const hue = (p.baseHue + (band*0.5+0.5-0.5)*p.hueVariation + 360)%360;
+      const light = p.brightness + band*20;
+      const rgb = hslToRgb(hue/360,p.saturation/100,Math.max(0,Math.min(1,light/100)));
+      data[di++]=rgb[0]; data[di++]=rgb[1]; data[di++]=rgb[2]; data[di++]=255;
+    }
+    ctx.putImageData(id,0,0);
+    return;
+  }
+
+  if (p.backgroundType === 'sierpinski'){
+    ctx.fillStyle = `hsl(${p.baseHue},${p.saturation}%,${p.brightness}%)`; ctx.fillRect(0,0,W,H);
+    const depth = p.sierpinskiDepth;
+    function drawTriangle(ax,ay,bx,by,cx_,cy_,d){
+      if (d===0){ ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.lineTo(cx_,cy_); ctx.closePath(); ctx.fill(); return }
+      const abx=(ax+bx)/2, aby=(ay+by)/2;
+      const acx=(ax+cx_)/2, acy=(ay+cy_)/2;
+      const bcx=(bx+cx_)/2, bcy=(by+cy_)/2;
+      drawTriangle(ax,ay,abx,aby,acx,acy,d-1);
+      drawTriangle(abx,aby,bx,by,bcx,bcy,d-1);
+      drawTriangle(acx,acy,bcx,bcy,cx_,cy_,d-1);
+    }
+    ctx.fillStyle = `hsl(${(p.baseHue+60)%360},${p.saturation}%,${Math.max(6,p.brightness-10)}%)`;
+    drawTriangle(W/2,10,10,H-10,W-10,H-10, depth);
+    return;
+  }
+
+  // fallback radial
+  const r = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H));
+  r.addColorStop(0,`hsl(${p.baseHue},${p.saturation}%,${Math.min(95,p.brightness+20)}%)`);
+  r.addColorStop(1,`hsl(${(p.baseHue+40)%360},${p.saturation}%,${Math.max(4,p.brightness-20)}%)`);
+  ctx.fillStyle = r; ctx.fillRect(0,0,W,H);
+}
+
+// small helpers: hsl->rgb and CSS color->rgb
+function hslToRgb(h, s, l){
+  let r, g, b;
+  if (s === 0){ r = g = b = l; }
+  else{
+    const hue2rgb = function(p, q, t){ if(t<0) t+=1; if(t>1) t-=1; if(t<1/6) return p + (q-p)*6*t; if(t<1/2) return q; if(t<2/3) return p + (q-p)*(2/3 - t)*6; return p };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s; const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1/3);
+  }
+  return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
+}
+function cssToRgb(css){
+  _tmpCtx.clearRect(0,0,1,1); _tmpCtx.fillStyle = css; _tmpCtx.fillRect(0,0,1,1); const d = _tmpCtx.getImageData(0,0,1,1).data; return [d[0],d[1],d[2]];
+}
+
+function drawShape(px,py,size,color,params){
+  const {algorithm,shapeSize,rotation,strokeWidth,distortion,complexity,rng} = params;
+  ctx.save(); ctx.translate(px+size/2,py+size/2); ctx.rotate(rotation*Math.PI/180 * (seededRand(rng, -1,1)));
+  ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = strokeWidth; const s = size*shapeSize;
+  switch(algorithm){
+    case 'pixels': ctx.fillRect(-s/2,-s/2,s,s); break;
+    case 'circles': ctx.beginPath(); ctx.arc(0,0,s*0.4,0,2*Math.PI); ctx.fill(); break;
+    case 'triangles': ctx.beginPath(); ctx.moveTo(0,-s*0.4); ctx.lineTo(-s*0.35,s*0.3); ctx.lineTo(s*0.35,s*0.3); ctx.closePath(); ctx.fill(); break;
+    case 'stars': {
+      const points = Math.floor(5+complexity*6);
+      ctx.beginPath(); for (let i=0;i<points*2;i++){ const ang = i*Math.PI/points; const rad = i%2===0? s*0.4: s*0.18; ctx.lineTo(Math.cos(ang)*rad, Math.sin(ang)*rad) } ctx.closePath(); ctx.fill(); break;
+    }
+    case 'spirals': { ctx.beginPath(); for (let i=0;i<40;i++){ const ang = i/40*Math.PI*complexity*6; const rad = i/40*s*0.5; ctx.lineTo(Math.cos(ang)*rad,Math.sin(ang)*rad) } ctx.stroke(); break }
+    case 'waves': { ctx.beginPath(); for (let i=0;i<=20;i++){ const ang = i/20*2*Math.PI; const rad = s*0.3 + Math.sin(ang*complexity*6)*s*0.1; ctx.lineTo(Math.cos(ang)*rad,Math.sin(ang)*rad) } ctx.closePath(); ctx.fill(); break }
+    case 'organic': { ctx.beginPath(); for (let i=0;i<12;i++){ const ang = i/12*2*Math.PI; const rad = s*0.25 + distortion*seededRand(rng,0,1)*s*0.35; ctx.lineTo(Math.cos(ang)*rad,Math.sin(ang)*rad) } ctx.closePath(); ctx.fill(); break }
+  }
+  ctx.restore();
+}
+
+function mirrorCoords(x,y,grid,mode){
+  const coords = [[x,y]]; const c = Math.floor(grid/2);
+  if (mode==='2') coords.push([grid-1-x,y]);
+  if (mode==='4') coords.push([grid-1-x,y],[x,grid-1-y],[grid-1-x,grid-1-y]);
+  if (mode==='radial'){
+    for (let i=1;i<8;i++){ const ang = i*Math.PI/4; const rx = Math.round(c+(x-c)*Math.cos(ang)-(y-c)*Math.sin(ang)); const ry = Math.round(c+(x-c)*Math.sin(ang)+(y-c)*Math.cos(ang)); if (rx>=0&&rx<grid&&ry>=0&&ry<grid) coords.push([rx,ry]); }
+  }
+  if (mode==='kaleidoscope'){
+    for (let i=1;i<6;i++){ const ang = i*Math.PI/3; const rx = Math.round(c+(x-c)*Math.cos(ang)-(y-c)*Math.sin(ang)); const ry = Math.round(c+(x-c)*Math.sin(ang)+(y-c)*Math.cos(ang)); if (rx>=0&&rx<grid&&ry>=0&&ry<grid) coords.push([rx,ry]); }
+  }
+  return coords;
+}
+
+function generate(seed=Date.now()){
+  const params = generateRandomParams(seed);
+  ctx.clearRect(0,0,W,H);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  drawBackground(params);
+  const palette = createColorPalette(params);
+  const cellSize = Math.floor(W/params.grid);
+  ctx.globalAlpha = params.opacity; ctx.globalCompositeOperation = params.blendMode;
+  for (let layer=0;layer<params.layering;layer++){
+    for (let x=0;x<params.grid;x++){
+      for (let y=0;y<params.grid;y++){
+        if (params.rng() < params.density){
+          const color = palette[Math.floor(params.rng()*palette.length)];
+          const coords = mirrorCoords(x,y,params.grid,params.mirrorMode);
+          coords.forEach(([cx,cy])=> drawShape(cx*cellSize,cy*cellSize,cellSize,color,params));
+        }
+      }
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  const data = ctx.getImageData(0,0,W,H).data; let sumR=0,sumG=0,sumB=0;
+  for (let i=0;i<data.length;i+=4){ sumR+=data[i]; sumG+=data[i+1]; sumB+=data[i+2] }
+  const avgR = sumR/(data.length/4), avgG = sumG/(data.length/4), avgB = sumB/(data.length/4);
+  const variance = Math.abs(avgR-avgG)+Math.abs(avgG-avgB)+Math.abs(avgB-avgR);
+  if (variance < 6) return generate(seed+1);
+  infoDiv.innerHTML = `Seed: ${params.seed}<br>Grid: ${params.grid} | Algo: ${params.algorithm} | Mirror: ${params.mirrorMode}<br>Scheme: ${params.colorScheme} (${params.colorCount}) | Bg: ${params.backgroundType}`;
+}
+
+document.getElementById('regen').addEventListener('click',()=>generate());
+document.getElementById('download').addEventListener('click',()=>{ const link=document.createElement('a'); link.download=`pfp-${Date.now()}.png`; link.href=canvas.toDataURL('image/png'); link.click(); });
+
+generate();
+</script>
+</body>
+</html>

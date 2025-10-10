@@ -1,0 +1,90 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Username + BIP39</title></head><body>
+<h1>Username Generator</h1>
+<label for="pattern">Pattern</label><select id="pattern"><option value="adj_noun">Adjective+Noun</option><option value="first_last">First+Last</option><option value="verb_animal">Verb+Animal</option><option value="word3">ThreeWords</option><option value="firstname_number">First+Number</option></select>
+<label for="separator">Separator</label><input id="separator" value="" placeholder="_ or -">
+<label for="capitalize">Capitalize</label><input id="capitalize" type="checkbox" checked>
+<label for="suffix">Add suffix</label><input id="suffix" type="checkbox"><label for="suffixLen">len</label><input id="suffixLen" type="number" min="1" max="6" value="3" style="width:60px">
+<button id="generate">Generate</button><button id="copy">Copy</button><button id="mnemonic">Generate BIP39</button>
+<div><strong>Result</strong><div id="result" style="font-family:monospace;margin-top:8px;"></div></div>
+
+<script>
+(() => {
+const ADJECTIVES=["silent","quick","red","iron","steady","lone","brisk","sable","bright","mellow","hollow","hushed","solar","lunar","dusky","keen","bold","nimble","primal","sparse","verdant","feral","cinder","vigilant","tenebrous","prismatic","stoic","glacial","urbane","sylvan","brazen","scarlet","opaline","ashen","crimson","oblique","fallow","tempest","serene","spry","taut","muted","aural","grainy","liminal","rustic","nocturnal","radiant","porous","anchored","viridian","gilded","torrid","brisket","calm","etched","fractured","granular","lithe","sterling"];
+const NOUNS=["falcon","lantern","river","circuit","vault","sentinel","meadow","forge","keystone","harbor","apex","hollow","atlas","strand","anchor","quarry","bridge","cobalt","summit","haven","cairn","nexus","citadel","prow","lattice","garrison","foundry","bastion","silo","pier","observatory","rampart","spire","harvest","terminal","axis","arcade","dock","marsh","fen","gate","grove","keel","ledger","loam","manor","obelisk","parlay","quay","rendezvous","roost","stockade","tact","upland","viaduct","watchtower","yarrow","zephyr","zenith","harrow"];
+const FIRSTNAMES=["alex","morgan","ryan","sam","casey","jamie","chris","taylor","rylie","drew","rowan","blake","reese","jude","kai","noel","remy","finn","sasha","eden","mila","noah","aria","isla","omar","ivy","leo","mina","zane","gale","mara","oscar","nora","alina","kian","tara","silas","amira","lucas","clio","yvonne","cassian","vera","elias","tomas","ambra","raph","celeste","dylan","kit","faye","orin","luca","anya","morganne","gideon","selah","marlo","briar","corin"];
+const LASTNAMES=["rivers","hayes","cross","morton","eldridge","bennett","keller","hart","montgomery","foster","payne","claire","marin","sable","whitt","porter","graves","hollis","keene","larsen","sinclair","maddox","voss","huxley","wyatt","corbin","sommers","drake","calloway","blanchard","kinney","rosen","quimby","bellamy","palmer","bradshaw","osborne","vane","lisle","starling","gale","norman","tilly","winthrop","morrow","bletchley","cove","darrow","elden","fletcher","gibson","hartley","ingram","jarvis","kincaid","leclair","montaigne","north","oxley","pratt"];
+const VERBS=["roam","forge","whisper","stride","hover","glide","spark","trace","seek","drift","charge","echo","weave","vault","probe","soar","amble","scorch","plunge","barter","ignite","harvest","calibrate","ripple","ascend","unwind","sunder","catalog","chart","compile","meld","shiver","kindle","murmur","polish","shuttle","scout","reclaim","anchor","pivot","ratchet","sift","splice","fold","stitch","trim","bloom","coalesce","hallow","compress","decrypt","route","marshal","signal","clock","harrow","tether","vectorize"];
+const ANIMALS=["fox","otter","hawk","lynx","badger","hare","orca","raven","ibex","puma","heron","mink","stoat","weasel","boar","ibis","kite","mako","goshawk","tern","jackal","marten","seal","gannet","wolverine","porpoise","caracal","lemur","dove","manatee","ermine","condor","takin","axolotl","pika","tapir","macaw","binturong","quokka","narwhal","pangolin","shoebill","tarsier","uakari","vicuna","wallaby","yak","zoril","eland","hartebeest","impala","kudu","myna","nene","oystercatcher","ptarmigan","roadrunner","skua"];
+const EXTRA_WORDS=["vector","byte","pixel","node","flux","orbit","codec","glyph","matrix","signal","cache","queue","epoch","heuristic","kernel","quanta","bitrate","daemon","entropy","symlink","shard","cluster","lumen","pulse","tau","delta","schema","route","bind","stack","bridge","anchor","mote","cursor","patch","slice","frame","block","bucket","index","probe","token","nonce","deltafile","tracer","memento","vectorize","binding","override","spin"];
+
+function secureInt(max){if(max<=0)return 0;const range=Math.floor(0xFFFFFFFF/max)*max;const v=new Uint32Array(1);while(1){crypto.getRandomValues(v);const val=v[0];if(val<range)return val%max}}
+const pick=list=>list[secureInt(list.length)];
+const titleCase=s=>s? s[0].toUpperCase()+s.slice(1):s;
+function randAlphaNumeric(len){const CHARS="abcdefghijklmnopqrstuvwxyz0123456789",buf=new Uint8Array(len);crypto.getRandomValues(buf);let o="";for(let i=0;i<len;i++)o+=CHARS[buf[i]%CHARS.length];return o}
+function buildUsername(o){const sep=o.separator===undefined?"":o.separator,cap=!!o.capitalize;let parts=[];switch(o.pattern){case"adj_noun":parts=[pick(ADJECTIVES),pick(NOUNS)];break;case"first_last":parts=[pick(FIRSTNAMES),pick(LASTNAMES)];break;case"verb_animal":parts=[pick(VERBS),pick(ANIMALS)];break;case"word3":parts=[pick(ADJECTIVES),pick(EXTRA_WORDS),pick(NOUNS)];break;case"firstname_number":parts=[pick(FIRSTNAMES),String(secureInt(9999)).padStart(3,"0")];break;default:parts=[pick(ADJECTIVES),pick(NOUNS)]}if(cap)parts=parts.map(titleCase);let name=parts.join(sep);if(o.suffix){const s=randAlphaNumeric(Math.max(1,Math.min(6,o.suffixLen||3)));name=name+sep+s}return name.replace(/\s+/g,"")}
+
+const $=id=>document.getElementById(id);
+const pattern=$("pattern"),separator=$("separator"),capitalize=$("capitalize"),suffix=$("suffix"),suffixLen=$("suffixLen"),generate=$("generate"),result=$("result"),copyBtn=$("copy"),mnemonicBtn=$("mnemonic");
+function doGenerate(){const opts={pattern:pattern.value,separator:separator.value,capitalize:capitalize.checked,suffix:suffix.checked,suffixLen:parseInt(suffixLen.value,10)};const n=buildUsername(opts);result.textContent=n;return n}
+generate.addEventListener("click",()=>doGenerate());
+copyBtn.addEventListener("click",()=>{const t=result.textContent||doGenerate();navigator.clipboard?.writeText(t).catch(()=>{});});
+document.addEventListener("DOMContentLoaded",()=>doGenerate());
+
+let BIP={ok:false,wordlist:null};
+async function fetchText(url){
+  try{const r=await fetch(url,{cache:"no-cache"}); if(!r.ok) return null; return await r.text()}catch(e){return null}
+}
+async function loadWordlist(){
+  if(BIP.ok) return true;
+  if(!navigator.onLine) return false;
+  const txtSources=[
+    "https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/english.txt",
+    "https://cdn.jsdelivr.net/gh/bitcoin/bips@master/bip-0039/english.txt",
+    "https://raw.githubusercontent.com/trezor/python-mnemonic/master/mnemonic/wordlists/english.txt"
+  ];
+  for(const u of txtSources){
+    const txt=await fetchText(u);
+    if(!txt) continue;
+    const lines=txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    if(lines.length===2048){BIP.wordlist=lines;BIP.ok=true;return true}
+    // try parsing JSON if returned as array
+    try{const maybe=JSON.parse(txt); if(Array.isArray(maybe)&&maybe.length===2048){BIP.wordlist=maybe;BIP.ok=true;return true}}catch(e){}
+  }
+  // last resort: try fetching json endpoints
+  const jsonSources=[
+    "https://cdn.jsdelivr.net/npm/bip39@3.1.0/wordlists/english.json",
+    "https://cdn.jsdelivr.net/gh/trezor/python-mnemonic@master/mnemonic/wordlists/english.json"
+  ];
+  for(const u of jsonSources){
+    try{const r=await fetch(u,{cache:"no-cache"}); if(!r.ok) continue; const j=await r.json(); if(Array.isArray(j)&&j.length===2048){BIP.wordlist=j;BIP.ok=true;return true}}catch(e){}
+  }
+  BIP.ok=false; return false;
+}
+
+function bytesToBits(b){let s="";for(const x of b)s+=x.toString(2).padStart(8,"0");return s}
+function bitsToWords(bitstr,wordlist){
+  const out=[]; for(let i=0;i<bitstr.length;i+=11){const idx=parseInt(bitstr.slice(i,i+11),2); out.push(wordlist[idx])} return out.join(" ")
+}
+async function generateMnemonicFromWordlist(wordlist,entropyBits=128){
+  const byteLen=entropyBits/8; const entropy=new Uint8Array(byteLen); crypto.getRandomValues(entropy);
+  const hash=new Uint8Array(await crypto.subtle.digest("SHA-256",entropy));
+  const entBits=bytesToBits(entropy); const checksumLen=entropyBits/32; const hashBits=bytesToBits(hash); const bits=entBits+hashBits.slice(0,checksumLen);
+  return bitsToWords(bits,wordlist);
+}
+
+mnemonicBtn.addEventListener("click",async ()=>{
+  result.textContent="";
+  if(!navigator.onLine){ result.textContent="offline"; return; }
+  const ok = await loadWordlist();
+  if(!ok){ result.textContent="bip39 unavailable"; return; }
+  try{
+    const m = await generateMnemonicFromWordlist(BIP.wordlist,128);
+    result.textContent = m;
+  }catch(e){console.error(e); result.textContent="bip39 error"}
+});
+
+if(navigator.onLine) loadWordlist();
+window.addEventListener("online",()=>{ if(!BIP.ok) loadWordlist(); });
+})();
+</script>
+</body></html>

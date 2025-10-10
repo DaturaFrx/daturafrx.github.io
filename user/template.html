@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte de Investigación - Plantilla editable</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:Georgia, "Times New Roman", serif;background:#ffffff;color:#111;line-height:1.55;padding:1rem}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding-bottom:.5rem;border-bottom:1px solid #ddd}
+  header h1{font-size:1.25rem;margin-bottom:.15rem}
+  header p{color:#555;font-family:Arial, sans-serif;font-size:.95rem;margin-top:0}
+
+  .help{background:#f8fbff;border:1px dashed #cfe8ff;padding:.7rem;border-radius:4px;margin:.75rem 0;font-family:Arial, sans-serif;color:#0b3b66}
+  .help ol{padding-left:1rem;margin-top:.4rem}
+  .help li{margin:.3rem 0;font-size:.95rem}
+
+  nav{display:flex;background:#222;color:#fff;border-radius:4px;overflow:hidden;margin:.6rem 0}
+  nav button{flex:1;padding:.55rem .65rem;border:0;background:transparent;color:inherit;cursor:pointer;font-weight:600;letter-spacing:.3px}
+  nav button.active{background:#111}
+  main{padding:0 0 2rem 0}
+  section{display:none;padding:.75rem 0;border-bottom:1px solid #eee}
+  section.active{display:block}
+  h2{font-size:1rem;margin-bottom:.4rem;padding-bottom:.25rem}
+  .content-block{margin:.6rem 0}
+  .content-block h3{font-size:.98rem;margin-bottom:.25rem;color:#222}
+  .content-block p{font-size:.96rem;color:#222;margin-bottom:.45rem}
+
+  .controls{display:flex;gap:.5rem;flex-wrap:wrap;margin:.35rem 0}
+  .btn{padding:.4rem .55rem;border-radius:4px;border:1px solid #222;background:#222;color:#fff;cursor:pointer;font-family:Arial, sans-serif;font-size:.88rem}
+  .btn.ghost{background:transparent;color:#222;border:1px solid #ccc}
+
+  [contenteditable]{outline:2px dashed transparent;padding:.08rem}
+  [contenteditable]:focus{outline:2px dashed #8bbcff;background:#fffefc}
+
+  footer{margin-top:1rem;padding-top:.65rem;border-top:1px solid #eee;font-family:Arial, sans-serif;color:#555;font-size:.9rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap}
+
+  /* Modal de edición Markdown */
+  #mdModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:2000;padding:1rem}
+  #mdModal .panel{width:100%;max-width:980px;background:#fff;border-radius:6px;padding:1rem}
+  #mdModal textarea{width:100%;height:320px;padding:.6rem;font-family:monospace;font-size:.95rem;border:1px solid #ddd;border-radius:4px;resize:vertical}
+  #mdModal .row{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.6rem}
+  .note{font-size:.85rem;color:#666}
+
+  @media (max-width:600px){
+    header{flex-direction:column;align-items:flex-start}
+    #mdModal .panel{padding:.8rem}
+    #mdModal textarea{height:240px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 contenteditable="true" id="site-title">Reporte de Investigación</h1>
+    <p contenteditable="true" id="site-subtitle">Investigación Anónima</p>
+  </div>
+
+  <div style="display:flex;gap:.5rem;align-items:center">
+    <div class="note">Edite haciendo clic en los textos. Use "Editar MD" para editar título y contenido de la sección con Markdown.</div>
+    <button class="btn" id="downloadBtn" title="Descargar HTML">Descargar página</button>
+  </div>
+</header>
+
+<div class="help" id="helpBox" role="region" aria-label="Instrucciones de edición">
+  <strong>Instrucciones para editar</strong>
+  <ol>
+    <li>Haga clic en cualquier título o párrafo para editar en línea.</li>
+    <li>Para editar el título y el contenido de una sección en Markdown, pulse "Editar MD" en esa sección.</li>
+    <li>Para cambiar imágenes locales, reemplace los archivos en la carpeta del HTML con el mismo nombre. Para agregar imágenes, use Agregar imagen en la pestaña Multimedia.</li>
+    <li>Cuando termine, pulse "Descargar página" para guardar una copia estática con sus cambios.</li>
+  </ol>
+</div>
+
+<nav role="tablist" aria-label="Pestañas principales">
+  <button data-tab="report" class="active" aria-selected="true">Reporte</button>
+  <button data-tab="evidence">Evidencia</button>
+  <button data-tab="documents">Documentos</button>
+  <button data-tab="media">Multimedia</button>
+</nav>
+
+<main>
+  <section id="report" class="active" role="region" aria-label="Reporte">
+    <h2 contenteditable="true">Reporte</h2>
+    <div class="content-block" data-md>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 contenteditable="true">Resumen General</h3>
+        <div class="controls">
+          <button class="btn ghost md-edit-btn">Editar MD</button>
+        </div>
+      </div>
+      <div contenteditable="true" class="editable">Comience con una descripción clara y concisa de lo que descubrió su investigación.</div>
+    </div>
+  </section>
+
+  <section id="evidence" role="region" aria-label="Evidencia">
+    <h2 contenteditable="true">Evidencia de Respaldo</h2>
+    <div class="content-block" data-md>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 contenteditable="true">Elemento de Evidencia 1</h3>
+        <div class="controls">
+          <button class="btn ghost md-edit-btn">Editar MD</button>
+        </div>
+      </div>
+      <div contenteditable="true" class="editable">Describa qué muestra esta evidencia y por qué es significativa. Incluya fechas y contexto.</div>
+      <p><button class="btn ghost" id="addDocFromEvidence">Agregar documento relacionado</button></p>
+    </div>
+  </section>
+
+  <section id="documents" role="region" aria-label="Documentos">
+    <h2 contenteditable="true">Documentos Fuente</h2>
+    <div class="content-block" data-md>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <p>Use "Agregar documento" para insertar enlaces a archivos o URLs.</p>
+        </div>
+        <div class="controls">
+          <button class="btn" id="addDocumentBtn">Agregar documento</button>
+          <button class="btn ghost" id="clearDocsBtn">Limpiar lista</button>
+          <button class="btn ghost md-edit-btn">Editar MD</button>
+        </div>
+      </div>
+      <ul id="fileList" class="file-list" aria-live="polite">
+        <li><a href="documento1.pdf" target="_blank">documento1.pdf</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="media" role="region" aria-label="Multimedia">
+    <h2 contenteditable="true">Imágenes y Multimedia</h2>
+    <div class="content-block" data-md>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <p>Reemplace archivos con el mismo nombre en la carpeta del HTML para actualizar imágenes locales. Use Agregar imagen para referenciar nuevas imágenes.</p>
+        </div>
+        <div class="controls">
+          <button class="btn" id="addImageBtn">Agregar imagen</button>
+          <button class="btn ghost" id="clearImagesBtn">Eliminar todas las imágenes</button>
+          <button class="btn ghost md-edit-btn">Editar MD</button>
+        </div>
+      </div>
+
+      <div id="images" class="image-list" aria-live="polite">
+        <div>
+          <img id="media1" src="img1.jpg" alt="Evidencia 1" style="max-width:46rem">
+          <p class="image-caption" contenteditable="true">Descripción de la imagen 1.</p>
+          <p><button class="btn ghost remove-image-btn">Eliminar esta imagen</button></p>
+        </div>
+
+        <div>
+          <img id="media2" src="img2.jpg" alt="Evidencia 2" style="max-width:46rem">
+          <p class="image-caption" contenteditable="true">Descripción de la imagen 2.</p>
+          <p><button class="btn ghost remove-image-btn">Eliminar esta imagen</button></p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="note">Plantilla simple y plana. Edite directamente y descargue la copia final.</div>
+  <div style="display:flex;gap:.5rem">
+    <button class="btn ghost" id="resetBtn">Restablecer plantilla</button>
+    <button class="btn" id="helpToggle">Ocultar instrucciones</button>
+  </div>
+</footer>
+
+<!-- Modal Markdown -->
+<div id="mdModal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="panel" role="document">
+    <label style="font-weight:600;display:block;margin-bottom:.4rem">Editar en Markdown (título + contenido)</label>
+    <textarea id="mdEditor" placeholder="Escriba Markdown aquí..."></textarea>
+    <div class="row">
+      <button class="btn ghost" id="mdCancel">Cancelar</button>
+      <button class="btn" id="mdSave">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Pestañas */
+const tabButtons = document.querySelectorAll('nav button[data-tab]');
+const sections = document.querySelectorAll('main section');
+function activateSection(id) {
+  sections.forEach(s => s.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+  tabButtons.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === id));
+}
+tabButtons.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    activateSection(btn.getAttribute('data-tab'));
+    const sec = document.getElementById(btn.getAttribute('data-tab'));
+    if (sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+
+/* Documentos */
+const fileList = document.getElementById('fileList');
+document.getElementById('addDocumentBtn').addEventListener('click', ()=>{
+  const name = prompt('Nombre de archivo o URL (por ejemplo documento3.pdf):');
+  if (!name) return;
+  const li = document.createElement('li');
+  const a = document.createElement('a');
+  a.href = name;
+  a.target = '_blank';
+  a.textContent = name;
+  li.appendChild(a);
+  fileList.appendChild(li);
+});
+document.getElementById('clearDocsBtn').addEventListener('click', ()=>{
+  if (!confirm('Eliminar todos los documentos listados?')) return;
+  fileList.innerHTML = '';
+});
+
+/* Imágenes: agregar, eliminar individual y eliminar todas */
+const imagesDiv = document.getElementById('images');
+let imageCounter = 3;
+document.getElementById('addImageBtn').addEventListener('click', ()=>{
+  const filename = prompt('Nombre de archivo de imagen (por ejemplo nueva.jpg). Luego copie el archivo a la carpeta del HTML:');
+  if (!filename) return;
+  const id = 'media' + imageCounter++;
+  const wrapper = document.createElement('div');
+
+  const img = document.createElement('img');
+  img.id = id; img.src = filename; img.alt = filename; img.style.maxWidth = '46rem';
+
+  const p = document.createElement('p'); p.className = 'image-caption'; p.contentEditable = 'true'; p.textContent = 'Descripción de ' + filename;
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'btn ghost remove-image-btn';
+  removeBtn.textContent = 'Eliminar esta imagen';
+  removeBtn.addEventListener('click', () => wrapper.remove());
+
+  wrapper.appendChild(img);
+  wrapper.appendChild(p);
+  wrapper.appendChild(removeBtn);
+  imagesDiv.appendChild(wrapper);
+});
+
+document.getElementById('clearImagesBtn').addEventListener('click', ()=>{
+  if (!confirm('Eliminar todas las imágenes listadas?')) return;
+  imagesDiv.innerHTML = '';
+});
+
+/* botones de eliminar por imagen existentes */
+document.addEventListener('click', (ev) => {
+  const rem = ev.target.closest('.remove-image-btn');
+  if (rem) {
+    const wrapper = rem.closest('div');
+    if (wrapper) wrapper.remove();
+  }
+});
+
+/* Agregar documento desde evidencia */
+const addDocFromEvidence = document.getElementById('addDocFromEvidence');
+if (addDocFromEvidence) {
+  addDocFromEvidence.addEventListener('click', ()=>{
+    document.getElementById('addDocumentBtn').click();
+    activateSection('documents');
+  });
+}
+
+/* Descargar HTML con cambios */
+document.getElementById('downloadBtn').addEventListener('click', ()=>{
+  const clone = document.documentElement.cloneNode(true);
+  clone.querySelectorAll('script').forEach(s=>s.remove());
+  // limpiar atributos aria-hidden/modal si existen
+  const modal = clone.querySelector('#mdModal'); if (modal) modal.remove();
+  const html = '<!doctype html>\n' + clone.outerHTML;
+  const blob = new Blob([html], {type: 'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'reporte-editable.html';
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+
+/* Restablecer plantilla */
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if (confirm('Desea restablecer la plantilla y perder los cambios no guardados?')) location.reload();
+});
+
+/* Mostrar/ocultar instrucciones */
+const helpBox = document.getElementById('helpBox');
+const helpToggle = document.getElementById('helpToggle');
+helpToggle.addEventListener('click', ()=>{
+  if (helpBox.style.display === 'none') { helpBox.style.display = ''; helpToggle.textContent = 'Ocultar instrucciones'; }
+  else { helpBox.style.display = 'none'; helpToggle.textContent = 'Mostrar instrucciones'; }
+});
+
+/* =========================
+   Editor Markdown (título + contenido)
+   - Al abrir, se precompleta con: "# Título-de-sección\n\nContenido..."
+   - Al guardar, si hay un primer encabezado en Markdown, actualiza el <h2> de la sección.
+   - El resto se convierte a HTML con mdToHtml y se coloca en el .editable de la sección.
+   ========================= */
+const mdModal = document.getElementById('mdModal');
+const mdEditor = document.getElementById('mdEditor');
+let currentSection = null;
+let currentEditable = null;
+
+document.querySelectorAll('.md-edit-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const block = btn.closest('.content-block');
+    if (!block) return;
+    const sec = block.closest('section');
+    if (!sec) return;
+    currentSection = sec;
+    currentEditable = block.querySelector('.editable');
+    const secTitle = (sec.querySelector('h2') || {innerText:''}).innerText.trim();
+    const bodyText = currentEditable ? currentEditable.innerText.trim() : '';
+    // Prellenar: encabezado de nivel 1 para editar título, luego contenido
+    mdEditor.value = (secTitle ? '# ' + secTitle + '\n\n' : '') + bodyText;
+    mdModal.style.display = 'flex';
+    mdModal.setAttribute('aria-hidden','false');
+    mdEditor.focus();
+  });
+});
+
+document.getElementById('mdCancel').addEventListener('click', ()=>{
+  mdModal.style.display = 'none';
+  mdModal.setAttribute('aria-hidden','true');
+  currentSection = null; currentEditable = null;
+});
+
+document.getElementById('mdSave').addEventListener('click', ()=>{
+  if (!currentSection) return;
+  const md = mdEditor.value || '';
+  // extraer primera cabecera (línea que inicia con #)
+  const lines = md.split(/\r?\n/);
+  let titleLineIndex = -1;
+  for (let i=0;i<lines.length;i++){
+    if (/^\s*#+\s+/.test(lines[i])) { titleLineIndex = i; break; }
+  }
+  if (titleLineIndex >= 0) {
+    // extraer texto del título sin hashes
+    const titleText = lines[titleLineIndex].replace(/^\s*#+\s+/,'').trim();
+    const h2 = currentSection.querySelector('h2');
+    if (h2) h2.innerText = titleText;
+    // quitar la línea de título del markdown restante
+    lines.splice(titleLineIndex,1);
+  }
+  // el resto del markdown
+  const restMd = lines.join('\n').trim();
+  const html = mdToHtml(restMd);
+  if (currentEditable) {
+    currentEditable.innerHTML = html || '<p></p>';
+    currentEditable.setAttribute('contenteditable','true');
+  }
+  mdModal.style.display = 'none';
+  mdModal.setAttribute('aria-hidden','true');
+  currentSection = null; currentEditable = null;
+});
+
+/* Parser Markdown: similar al anterior (simple, sin dependencias) */
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function mdToHtml(md){
+  if (!md) return '';
+  const codeBlocks = [];
+  md = md.replace(/```([\s\S]*?)```/g, (m, p)=> {
+    codeBlocks.push(p);
+    return `\u0000CODEBLOCK${codeBlocks.length-1}\u0000`;
+  });
+  md = escapeHtml(md);
+  md = md.replace(/^###### (.*)$/gm, '<h6>$1</h6>');
+  md = md.replace(/^##### (.*)$/gm, '<h5>$1</h5>');
+  md = md.replace(/^#### (.*)$/gm, '<h4>$1</h4>');
+  md = md.replace(/^### (.*)$/gm, '<h3>$1</h3>');
+  md = md.replace(/^## (.*)$/gm, '<h2>$1</h2>');
+  md = md.replace(/^# (.*)$/gm, '<h1>$1</h1>');
+  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  md = md.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  md = md.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  md = md.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  md = md.replace(/_(.+?)_/g, '<em>$1</em>');
+  md = md.replace(/`([^`]+)`/g, '<code>$1</code>');
+  md = md.replace(/(^(\s*[-*]\s+.+\n?)+)/gm, (m) => {
+    const items = m.trim().split(/\n/).map(l => l.replace(/^\s*[-*]\s+/,'').trim());
+    return '<ul>' + items.map(it => '<li>' + it + '</li>').join('') + '</ul>\n';
+  });
+  md = md.replace(/(^(\s*\d+\.\s+.+\n?)+)/gm, (m) => {
+    const items = m.trim().split(/\n/).map(l => l.replace(/^\s*\d+\.\s+/,'').trim());
+    return '<ol>' + items.map(it => '<li>' + it + '</li>').join('') + '</ol>\n';
+  });
+  const parts = md.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p => {
+    if (/^<(h[1-6]|ul|ol|pre|blockquote|p|img|div)/i.test(p)) return p;
+    return '<p>' + p.replace(/\n/g,'<br>') + '</p>';
+  });
+  let html = parts.join('');
+  html = html.replace(/\u0000CODEBLOCK(\d+)\u0000/g, (m, n) => {
+    const code = escapeHtml(codeBlocks[parseInt(n,10)]);
+    return '<pre><code>' + code + '</code></pre>';
+  });
+  return html;
+}
+
+/* Cerrar modal con Escape */
+document.addEventListener('keydown', (ev)=>{
+  if (ev.key === 'Escape' && mdModal.style.display === 'flex') {
+    mdModal.style.display = 'none';
+    mdModal.setAttribute('aria-hidden','true');
+    currentSection = null; currentEditable = null;
+  }
+});
+
+/* Cargar hash inicial si apunta a elemento dentro de sección oculta */
+window.addEventListener('load', ()=>{
+  const hash = location.hash.replace('#','');
+  if (!hash) return;
+  const el = document.getElementById(hash);
+  if (!el) return;
+  const parent = el.closest('section');
+  if (parent) {
+    activateSection(parent.id);
+    setTimeout(()=> el.scrollIntoView({behavior:'smooth', block:'center'}), 80);
+  }
+});
+</script>
+</body>
+</html>
