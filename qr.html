@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>QR Maker</title>
 <style>
-:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;--bg:#0f1720;--card:#0b1220;--muted:#9aa4b2;--accent:#06f}
-html,body{height:100%;margin:0;background:linear-gradient(180deg,#071020 0%,#071428 100%) fixed;color:#e6eef6}
-.container{max-width:720px;margin:28px auto;padding:18px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));box-shadow:0 6px 24px rgba(2,6,23,0.6)}
+:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;--muted:#6b7280;--accent:#06f}
+html,body{height:100%;margin:0;background:#071428;color:#e6eef6}
+.container{max-width:720px;margin:12px auto;padding:18px;border-radius:12px;background:transparent}
 .header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
 .title{font-size:18px;font-weight:600}
 .controls{display:flex;gap:8px;align-items:center}
@@ -24,10 +24,17 @@ input[type="text"]{width:100%;padding:12px;border-radius:10px;border:1px solid r
 canvas{width:min(84vw,320px);height:auto;border-radius:12px;background:#fff;padding:8px}
 .note{margin-top:10px;color:var(--muted);font-size:13px}
 .footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+
+/* mobile-only card look: keep compact card styling on small screens, remove card visuals on desktop */
 @media (max-width:420px){
-.container{margin:12px;padding:12px;border-radius:10px}
-.title{font-size:16px}
-.toggle button{min-width:68px;padding:8px 10px}
+  .container{margin:12px;padding:12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));box-shadow:0 6px 24px rgba(2,6,23,0.6)}
+  .title{font-size:16px}
+  .toggle button{min-width:68px;padding:8px 10px}
+}
+
+/* desktop: no card background, no shadow (card CSS removed for desktop) */
+@media (min-width:421px){
+  .container{background:transparent;box-shadow:none;padding:18px}
 }
 </style>
 </head>
@@ -58,86 +65,135 @@ canvas{width:min(84vw,320px);height:auto;border-radius:12px;background:#fff;padd
   </div>
 
   <div class="note">Normal text or URL mode. Output is a clean PNG without appended metadata.</div>
-
-  <div class="footer"></div>
 </main>
 
 <script>
-const elModeText=document.getElementById('mode-text')
-const elModeUrl=document.getElementById('mode-url')
-const input=document.getElementById('payload')
-const btnGen=document.getElementById('generate')
-const btnDownload=document.getElementById('download')
-const canvas=document.getElementById('qr')
-const ctx=canvas.getContext('2d')
+const elModeText = document.getElementById('mode-text');
+const elModeUrl = document.getElementById('mode-url');
+const input = document.getElementById('payload');
+const btnGen = document.getElementById('generate');
+const btnDownload = document.getElementById('download');
+const canvas = document.getElementById('qr');
+const ctx = canvas.getContext('2d');
 
 function setMode(mode){
-  elModeText.setAttribute('aria-pressed',mode==='text')
-  elModeUrl.setAttribute('aria-pressed',mode==='url')
-  input.placeholder= mode==='url' ? 'https://example.com' : 'Enter text'
-  input.inputMode = mode==='url' ? 'url' : 'text'
-  input.value = input.value.trim()
+  elModeText.setAttribute('aria-pressed', mode === 'text' ? 'true' : 'false');
+  elModeUrl.setAttribute('aria-pressed', mode === 'url' ? 'true' : 'false');
+  input.placeholder = mode === 'url' ? 'https://example.com' : 'Enter text';
+  input.inputMode = mode === 'url' ? 'url' : 'text';
+  input.value = input.value.trim();
 }
-elModeText.addEventListener('click',()=>setMode('text'))
-elModeUrl.addEventListener('click',()=>setMode('url'))
+elModeText.addEventListener('click', () => setMode('text'));
+elModeUrl.addEventListener('click', () => setMode('url'));
 
 function drawBlank(){
-  ctx.fillStyle='#ffffff'
-  ctx.fillRect(0,0,canvas.width,canvas.height)
-  const t='QR'
-  ctx.fillStyle='#dce8f8'
-  ctx.font='bold 96px system-ui'
-  ctx.textAlign='center'
-  ctx.textBaseline='middle'
-  ctx.fillText(t,canvas.width/2,canvas.height/2)
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#dce8f8';
+  ctx.font = 'bold 96px system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('QR', canvas.width/2, canvas.height/2);
 }
-drawBlank()
+drawBlank();
 
-function fetchQRViaApi(data,size){
-  const encoded=encodeURIComponent(data)
-  const url=`https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encoded}&choe=UTF-8`
-  return fetch(url).then(r=>r.blob())
+function buildGoogleQRUrl(data, size){
+  return 'https://chart.googleapis.com/chart?cht=qr&chs=' + size + 'x' + size + '&chl=' + encodeURIComponent(data) + '&choe=UTF-8';
 }
 
-function renderBlobToCanvas(blob){
-  return createImageBitmap(blob).then(img=>{
-    ctx.clearRect(0,0,canvas.width,canvas.height)
-    ctx.fillStyle='#ffffff'
-    ctx.fillRect(0,0,canvas.width,canvas.height)
-    const sx=canvas.width
-    const sy=canvas.height
-    ctx.drawImage(img,0,0,sx,sy)
-  })
+/* Attempt to fetch image as blob and draw via createImageBitmap when possible.
+   Fallback to objectURL->Image if needed. Final fallback tries direct Image(src).
+*/
+async function fetchAndDrawQR(data, size){
+  const url = buildGoogleQRUrl(data, size);
+  // prefer fetch+createImageBitmap (avoids canvas cross-origin taint and keeps download working)
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('fetch-error');
+    const blob = await resp.blob();
+    if (window.createImageBitmap) {
+      const bitmap = await createImageBitmap(blob);
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      return;
+    } else {
+      // fallback for environments without createImageBitmap
+      const objUrl = URL.createObjectURL(blob);
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0,0,canvas.width,canvas.height);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0,0,canvas.width,canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(objUrl);
+          resolve();
+        };
+        img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error('image-load')); };
+        img.src = objUrl;
+      });
+      return;
+    }
+  } catch (e) {
+    // final fallback: try direct Image load (may taint canvas in some browsers)
+    try {
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          ctx.clearRect(0,0,canvas.width,canvas.height);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0,0,canvas.width,canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve();
+        };
+        img.onerror = () => reject(new Error('final-image-fail'));
+        img.src = url;
+      });
+      return;
+    } catch(err){
+      throw err;
+    }
+  }
 }
 
-function generate(){
-  const val=input.value.trim()
-  if(!val){drawBlank();return Promise.resolve()}
-  const mode = elModeUrl.getAttribute('aria-pressed')==='true' ? 'url' : 'text'
-  const out = mode==='url' ? (val.match(/^https?:\/\//i) ? val : 'https://'+val) : val
-  return fetchQRViaApi(out,512).then(blob=>renderBlobToCanvas(blob)).catch(()=>drawBlank())
+async function generate(){
+  const val = input.value.trim();
+  if (!val) { drawBlank(); return; }
+  const mode = elModeUrl.getAttribute('aria-pressed') === 'true' ? 'url' : 'text';
+  const out = mode === 'url' ? (val.match(/^https?:\/\//i) ? val : 'https://' + val) : val;
+  try {
+    await fetchAndDrawQR(out, 512);
+  } catch (err) {
+    drawBlank();
+    console.error(err);
+  }
 }
 
-btnGen.addEventListener('click',()=>generate())
+btnGen.addEventListener('click', () => { generate(); });
 
-btnDownload.addEventListener('click',async()=>{
-  await generate()
+btnDownload.addEventListener('click', async () => {
+  await generate();
+  // use toBlob so no metadata and proper PNG
   canvas.toBlob(function(blob){
-    if(!blob) return
-    const a=document.createElement('a')
-    const url=URL.createObjectURL(blob)
-    a.href=url
-    a.download='qr.png'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    setTimeout(()=>URL.revokeObjectURL(url),1500)
-  },'image/png')
-})
+    if(!blob) return;
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = 'qr.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }, 'image/png');
+});
 
-input.addEventListener('keydown',e=>{
-  if(e.key==='Enter'){e.preventDefault();generate()}
-})
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); generate(); }
+});
 </script>
 </body>
 </html>
