@@ -1,1 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+  <channel>
+    <title>Mi RSS - Noticias de México</title>
+    <link>https://daturafrx.github.io/</link>
+    <description>RSS feed generado manualmente para pruebas</description>
+    <language>es-MX</language>
+    <lastBuildDate>Tue, 14 Oct 2025 15:30:00 +0000</lastBuildDate>
 
+    <item>
+      <title>Sample Item 1</title>
+      <link>https://www.example.com/news1</link>
+      <description>Este es un artículo de prueba 1.</description>
+      <pubDate>Tue, 14 Oct 2025 08:30:00 +0000</pubDate>
+      <guid>https://www.example.com/news1</guid>
+    </item>
+
+    <item>
+      <title>Sample Item 2</title>
+      <link>https://www.example.com/news2</link>
+      <description>Este es un artículo de prueba 2.</description>
+      <pubDate>Tue, 14 Oct 2025 09:00:00 +0000</pubDate>
+      <guid>https://www.example.com/news2</guid>
+    </item>
+
+    <item>
+      <title>Sample Item 3</title>
+      <link>https://www.example.com/news3</link>
+      <description>Este es un artículo de prueba 3.</description>
+      <pubDate>Tue, 14 Oct 2025 09:30:00 +0000</pubDate>
+      <guid>https://www.example.com/news3</guid>
+    </item>
+
+  </channel>
+</rss>
