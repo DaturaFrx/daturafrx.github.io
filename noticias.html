@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Noticias de México</title>
+  <title>Agregador de Noticias RSS de México</title>
   <style>
     :root {
       --primary: #000;
@@ -246,7 +246,7 @@
 </head>
 <body>
   <div class="header">
-    <h1>Noticias de México</h1>
+    <h1>Noticias de México (RSS)</h1>
     <div class="status-bar">
       <span class="status-dot loading" id="statusDot"></span>
       <span id="statusText">Cargando feeds...</span>
@@ -254,13 +254,15 @@
   </div>
 
   <div class="container">
-    <div id="feedsWorking"></div>
+    <div id="feedsContainer"></div>
     <div id="dividerContainer"></div>
     <div id="feedsFailed"></div>
   </div>
 
   <script>
     const feeds = {
+      "La Jornada - Política": "https://www.jornada.com.mx/rss/politica.xml",
+      
       "Mexico News Daily": "https://mexiconewsdaily.com/feed/",
       "Excélsior": "https://www.excelsior.com.mx/rss.xml",
       "Reforma": "https://www.reforma.com/rss/portada.xml",
@@ -320,54 +322,111 @@
       }
     }
 
-    function cleanText(text) {
-      if (!text) return '';
-      // Remove CDATA wrappers
-      text = text.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1');
-      // Decode HTML entities
-      const textarea = document.createElement('textarea');
-      textarea.innerHTML = text;
-      return textarea.value.trim();
+    function decodeHTML(html) {
+      const txt = document.createElement('textarea');
+      txt.innerHTML = html;
+      return txt.value;
     }
 
-    function getElementText(element, selectors) {
-      for (const selector of selectors) {
-        const el = element.querySelector(selector);
-        if (el) {
-          return cleanText(el.textContent);
-        }
+    function cleanText(text) {
+      if (!text) return '';
+      
+      // Remove CDATA
+      text = text.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+      
+      // Decode HTML entities up to 3 times for nested encoding
+      for (let i = 0; i < 3; i++) {
+        const decoded = decodeHTML(text);
+        if (decoded === text) break;
+        text = decoded;
+      }
+      
+      // Remove HTML tags
+      text = text.replace(/<[^>]+>/g, ' ');
+      
+      // Clean whitespace
+      text = text.replace(/\s+/g, ' ').trim();
+      
+      return text;
+    }
+
+    function getText(element) {
+      if (!element) return '';
+      
+      // Check for CDATA in innerHTML
+      const html = element.innerHTML || '';
+      const cdataMatch = html.match(/<!\[CDATA\[([\s\S]*?)\]\]>/);
+      if (cdataMatch) {
+        return cleanText(cdataMatch[1]);
+      }
+      
+      return cleanText(element.textContent || element.innerText || '');
+    }
+
+    function findElement(parent, ...selectors) {
+      for (const sel of selectors) {
+        const el = parent.querySelector(sel) || 
+                   parent.getElementsByTagName(sel)[0] ||
+                   parent.getElementsByTagName(sel.replace(/^.*:/, ''))[0];
+        if (el) return el;
       }
       return null;
     }
 
-    function parseItems(xml) {
+    function getLink(item) {
+      // Try link element with href
+      let link = item.querySelector('link[href]');
+      if (link) return link.getAttribute('href');
+      
+      // Try link with rel=alternate
+      link = item.querySelector('link[rel="alternate"]');
+      if (link) return link.getAttribute('href');
+      
+      // Try any link element
+      link = item.querySelector('link');
+      if (link) {
+        const href = link.getAttribute('href');
+        if (href) return href;
+        const text = getText(link);
+        if (text && text.match(/^https?:\/\//)) return text;
+      }
+      
+      // Try guid
+      const guid = item.querySelector('guid');
+      if (guid) {
+        const text = getText(guid);
+        if (text && text.match(/^https?:\/\//)) return text;
+      }
+      
+      return null;
+    }
+
+    function parseItems(doc) {
       const items = [];
       
-      // Try RSS format
-      const rssItems = xml.querySelectorAll('item');
-      rssItems.forEach(item => {
-        const title = getElementText(item, ['title']);
-        const link = getElementText(item, ['link', 'guid']);
-        const pubDate = getElementText(item, ['pubDate', 'dc\\:date', 'date']);
+      // Find all possible item elements
+      const elements = [
+        ...doc.querySelectorAll('item'),
+        ...doc.querySelectorAll('entry'),
+        ...doc.getElementsByTagName('item'),
+        ...doc.getElementsByTagName('entry')
+      ];
+      
+      // Remove duplicates
+      const uniqueElements = [...new Set(elements)];
+      
+      for (const item of uniqueElements) {
+        const titleEl = findElement(item, 'title');
+        const title = titleEl ? getText(titleEl) : null;
+        
+        const link = getLink(item);
+        
+        const dateEl = findElement(item, 'pubDate', 'published', 'updated', 'dc:date', 'date');
+        const pubDate = dateEl ? getText(dateEl) : null;
         
         if (title && link) {
           items.push({ title, link, pubDate });
         }
-      });
-      
-      // Try Atom format if no RSS items found
-      if (items.length === 0) {
-        const atomEntries = xml.querySelectorAll('entry');
-        atomEntries.forEach(entry => {
-          const title = getElementText(entry, ['title']);
-          const linkEl = entry.querySelector('link[rel="alternate"], link');
-          const link = linkEl ? linkEl.getAttribute('href') : null;
-          const pubDate = getElementText(entry, ['published', 'updated']);
-          
-          if (title && link) {
-            items.push({ title, link, pubDate });
-          }
-        });
       }
       
       return items;
@@ -391,62 +450,82 @@
       createLoadingSkeleton(itemsContainer);
       section.appendChild(itemsContainer);
       
-      // Add to working container initially
-      document.getElementById('feedsWorking').appendChild(section);
+      document.getElementById('feedsContainer').appendChild(section);
 
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
         
-        const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, {
-          signal: controller.signal
-        });
+        let text = '';
+        const proxies = [
+          `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+          `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+        ];
+        
+        let lastError = null;
+        for (const proxy of proxies) {
+          try {
+            const response = await fetch(proxy, { signal: controller.signal });
+            
+            if (!response.ok) continue;
+            
+            const contentType = response.headers.get('content-type') || '';
+            
+            // Handle allorigins JSON wrapper
+            if (proxy.includes('allorigins') && contentType.includes('json')) {
+              const json = await response.json();
+              text = json.contents || '';
+            } else {
+              text = await response.text();
+            }
+            
+            if (text && text.trim().length > 100) {
+              break; // Success
+            }
+          } catch (e) {
+            lastError = e;
+            continue;
+          }
+        }
         
         clearTimeout(timeoutId);
         
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+        if (!text || text.trim().length < 100) {
+          throw lastError || new Error('Feed vacío o inaccesible');
         }
         
-        let text = await response.text();
+        // Aggressive XML cleanup
+        text = text.trim();
         
-        if (!text || text.trim().length === 0) {
-          throw new Error('Feed vacío');
+        // Remove BOM
+        if (text.charCodeAt(0) === 0xFEFF) {
+          text = text.slice(1);
         }
         
-        // Clean up malformed XML
-        text = text.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;');
+        // Fix unescaped ampersands but preserve valid entities
+        text = text.replace(/&(?!(?:amp|lt|gt|quot|apos|nbsp|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;');
         
+        // Parse as XML first, then HTML as fallback
         const parser = new DOMParser();
-        const xml = parser.parseFromString(text, "text/xml");
+        let doc = parser.parseFromString(text, 'application/xml');
         
-        const parserError = xml.querySelector('parsererror');
-        if (parserError) {
-          // Try as HTML parser as fallback
-          const htmlDoc = new DOMParser().parseFromString(text, "text/html");
-          const items = parseItems(htmlDoc);
-          
-          if (items.length === 0) {
-            throw new Error('Error al parsear XML/HTML');
-          }
-          
-          displayItems(items, itemsContainer, header, section);
-        } else {
-          const items = parseItems(xml);
-          
-          if (items.length === 0) {
-            throw new Error('No se encontraron artículos');
-          }
-          
-          displayItems(items, itemsContainer, header, section);
+        if (doc.querySelector('parsererror')) {
+          // Try as HTML
+          doc = parser.parseFromString(text, 'text/html');
         }
         
+        const items = parseItems(doc);
+        
+        if (items.length === 0) {
+          throw new Error('No se encontraron artículos válidos');
+        }
+        
+        displayItems(items, itemsContainer, header, section);
         loadedCount++;
         
       } catch (err) {
         console.error(`Error loading ${name}:`, err);
         
-        // Move to failed section
         addDivider();
         document.getElementById('feedsFailed').appendChild(section);
         
@@ -456,11 +535,13 @@
         statusSpan.className = 'feed-status error';
         statusSpan.textContent = 'Error';
         
-        const errorMsg = err.name === 'AbortError' ? 'Tiempo de espera agotado' : (err.message || 'Error desconocido');
+        const errorMsg = err.name === 'AbortError' 
+          ? 'Tiempo agotado' 
+          : (err.message || 'Error desconocido');
         
         itemsContainer.innerHTML = `
           <div class="error-message">
-            No se pudo cargar este feed. ${errorMsg}
+            ${errorMsg}
           </div>
           <button class="retry-btn" onclick="retryFeed('${name.replace(/'/g, "\\'")}', '${url.replace(/'/g, "\\'")}')">
             Reintentar
@@ -498,13 +579,13 @@
                 minute: '2-digit'
               })}</div>`;
             }
-          } catch (e) {
-            // Ignore date errors
-          }
+          } catch (e) {}
         }
         
+        const safeTitle = title.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
         div.innerHTML = `
-          <a href="${link}" target="_blank" rel="noopener noreferrer">${title.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</a>
+          <a href="${link}" target="_blank" rel="noopener noreferrer">${safeTitle}</a>
           ${dateStr}
         `;
         itemsContainer.appendChild(div);
@@ -515,11 +596,14 @@
 
     window.retryFeed = async function(name, url) {
       const section = document.getElementById(`feed-${name.replace(/\s+/g, '-').toLowerCase()}`);
-      if (section) {
-        section.remove();
-      }
+      if (section) section.remove();
       
       if (errorCount > 0) errorCount--;
+      
+      if (errorCount === 0 && dividerAdded) {
+        document.getElementById('dividerContainer').innerHTML = '';
+        dividerAdded = false;
+      }
       
       updateStatus();
       await loadFeed(name, url);
