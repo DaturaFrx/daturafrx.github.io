@@ -1,897 +1,1298 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AES-GCM</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0b0c0f;
-      --muted: #94a3b8;
-      --text: #e6eef6;
-      --accent: #93c5fd;
-      --ok: #22c55e;
-      --bad: #ef4444;
-      --panel-border: #1f2937;
-      --spacing-xs: 4px;
-      --spacing-sm: 8px;
-      --spacing-md: 12px;
-      --spacing-lg: 16px;
-      --spacing-xl: 20px;
-      --input-padding: 10px;
-      --button-padding: 10px;
-      --border-radius: 8px;
-      --card-radius: 10px;
-    }
-
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    }
-
-    .wrap {
-      max-width: 980px;
-      margin: var(--spacing-lg) auto;
-      padding: var(--spacing-md);
-    }
-
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--spacing-md);
-      margin-bottom: var(--spacing-md);
-    }
-
-    .hdr-left,
-    .hdr-right {
-      display: flex;
-      flex-direction: column;
-    }
-
-    h1 {
-      font-size: 18px;
-      margin: 0;
-      color: #cfe8ff;
-      font-weight: 700;
-    }
-
-    .sub {
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.2;
-    }
-
-    .subSmall {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .card {
-      border: 1px solid var(--panel-border);
-      border-radius: var(--card-radius);
-      padding: var(--spacing-lg);
-      margin-bottom: var(--spacing-lg);
-    }
-
-    .row {
-      display: flex;
-      gap: var(--spacing-sm);
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    label.hint {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 6px;
-    }
-
-    input[type=text],
-    textarea,
-    select {
-      width: 100%;
-      max-width: 100%;
-      background: none;
-      color: var(--text);
-      border: 1px solid var(--panel-border);
-      border-radius: var(--border-radius);
-      padding: var(--input-padding);
-      font-family: monospace;
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-
-    textarea {
-      min-height: 90px;
-      resize: vertical;
-    }
-
-    button {
-      width: 100%;
-      background: none;
-      color: var(--text);
-      border: 1px solid #334155;
-      border-radius: var(--border-radius);
-      padding: var(--button-padding);
-      font-size: 14px;
-      cursor: pointer;
-      box-sizing: border-box;
-      min-height: 44px;
-    }
-
-    button:active {
-      transform: translateY(1px);
-    }
-
-    button.ghost {
-      border: 1px dashed #334155;
-    }
-
-    .mono {
-      font-family: monospace;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .hint {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .ok {
-      color: var(--ok);
-    }
-
-    .bad {
-      color: var(--bad);
-    }
-
-    .sep {
-      height: 1px;
-      background: var(--panel-border);
-      margin: var(--spacing-md) 0;
-    }
-
-    .pill {
-      font-size: 12px;
-      border: 1px solid var(--panel-border);
-      padding: var(--spacing-xs) var(--spacing-sm);
-      border-radius: 999px;
-      color: var(--muted);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: var(--spacing-md);
-    }
-
-    .col-6 {
-      grid-column: span 6;
-    }
-
-    .col-12 {
-      grid-column: span 12;
-    }
-
-    .tokenWrap {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-sm);
-    }
-
-    .payload {
-      font-family: monospace;
-      font-size: 15px;
-      line-height: 1.3;
-      font-weight: 600;
-      border: 1px solid var(--panel-border);
-      border-radius: var(--border-radius);
-      padding: var(--spacing-md);
-      overflow-wrap: break-word;
-      word-break: break-all;
-      cursor: pointer;
-      user-select: text;
-    }
-
-    .payload:active {
-      opacity: 0.96;
-    }
-
-    .copyToast {
-      position: fixed;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: 22px;
-      background: #0f1724;
-      color: var(--text);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      padding: var(--spacing-sm) var(--spacing-md);
-      border-radius: 999px;
-      font-size: 13px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .18s ease;
-    }
-
-    .copyToast.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .tokenBox {
-      padding: var(--spacing-sm);
-      border-radius: 6px;
-      border: 1px solid var(--panel-border);
-      font-family: monospace;
-      font-size: 13px;
-      overflow-wrap: break-word;
-      word-break: break-all;
-    }
-
-    .tokenToggle {
-      display: none;
-    }
-
-    .encrypt-block,
-    .decrypt-block {
-      display: block;
-      margin-bottom: var(--spacing-xl);
-      padding: var(--spacing-lg);
-      border: 1px solid var(--panel-border);
-      border-radius: var(--card-radius);
-    }
-
-    .mobile-menu-toggle {
-      display: none;
-      position: fixed;
-      top: 16px;
-      left: 16px;
-      z-index: 1000;
-      background: var(--bg);
-      border: 1px solid var(--panel-border);
-      border-radius: var(--border-radius);
-      padding: 8px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-
-    .hamburger-icon {
-      width: 20px;
-      height: 20px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-around;
-    }
-
-    .hamburger-line {
-      width: 100%;
-      height: 2px;
-      background: var(--text);
-      border-radius: 1px;
-      transition: all 0.3s ease;
-    }
-
-    .mobile-menu-toggle.active .hamburger-line:nth-child(1) {
-      transform: rotate(45deg) translate(5px, 5px);
-    }
-
-    .mobile-menu-toggle.active .hamburger-line:nth-child(2) {
-      opacity: 0;
-    }
-
-    .mobile-menu-toggle.active .hamburger-line:nth-child(3) {
-      transform: rotate(-45deg) translate(7px, -6px);
-    }
-
-    .mobile-peer-panel {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(11, 12, 15, 0.95);
-      backdrop-filter: blur(8px);
-      z-index: 999;
-      padding: 60px 16px 16px;
-      box-sizing: border-box;
-      overflow-y: auto;
-    }
-
-    .mobile-peer-content {
-      max-width: 400px;
-      margin: 0 auto;
-    }
-
-    @media (max-width: 720px) {
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AES-GCM</title>
+    <style>
       :root {
-        --spacing-md: 10px;
-        --spacing-lg: 14px;
-        --input-padding: 12px;
-        --button-padding: 12px;
+        color-scheme: dark;
+        --bg: #0b0c0f;
+        --bg-elevated: #151821;
+        --bg-card: #1a1d29;
+        --muted: #94a3b8;
+        --text: #e6eef6;
+        --accent: #93c5fd;
+        --accent-hover: #bfdbfe;
+        --ok: #22c55e;
+        --bad: #ef4444;
+        --panel-border: #1f2937;
+        --input-border: #2d3748;
+        --button-border: #334155;
+        --spacing-xs: 4px;
+        --spacing-sm: 8px;
+        --spacing-md: 12px;
+        --spacing-lg: 16px;
+        --spacing-xl: 20px;
+        --spacing-2xl: 28px;
+        --input-padding: 10px;
+        --button-padding: 10px;
+        --border-radius: 8px;
+        --card-radius: 10px;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+          Roboto, "Helvetica Neue", Arial;
       }
 
       .wrap {
-        margin: var(--spacing-sm) auto;
-        padding-top: 60px;
+        max-width: 980px;
+        margin: var(--spacing-lg) auto;
+        padding: var(--spacing-md);
       }
 
-      .mobile-menu-toggle {
-        display: flex;
-      }
-
-      .peer-section {
-        display: none !important;
-      }
-
-      .mobile-peer-panel.active {
-        display: block;
-      }
-
+      /* HEADER STYLES */
       header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+        padding: var(--spacing-md);
+        background: var(--bg-elevated);
+        border-radius: var(--card-radius);
+        border: 1px solid var(--panel-border);
+      }
+
+      .hdr-left,
+      .hdr-right {
+        display: flex;
         flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing-sm);
       }
 
       h1 {
-        font-size: 16px;
+        font-size: 18px;
+        margin: 0;
+        color: #cfe8ff;
+        font-weight: 700;
       }
 
       .sub {
         font-size: 13px;
+        color: var(--muted);
+        line-height: 1.2;
       }
 
       .subSmall {
         font-size: 12px;
+        color: var(--muted);
       }
 
+      /* CARD STYLES */
+      .card {
+        background: var(--bg-card);
+        border: 1px solid var(--panel-border);
+        border-radius: var(--card-radius);
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-lg);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .row {
+        display: flex;
+        gap: var(--spacing-sm);
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      /* FORM ELEMENTS */
+      label.hint {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      input[type="text"],
+      textarea,
+      select {
+        width: 100%;
+        max-width: 100%;
+        background: var(--bg-elevated);
+        color: var(--text);
+        border: 1px solid var(--input-border);
+        border-radius: var(--border-radius);
+        padding: var(--input-padding);
+        font-family: monospace;
+        font-size: 14px;
+        box-sizing: border-box;
+        transition: border-color 0.2s ease, background 0.2s ease;
+      }
+
+      input[type="text"]:focus,
+      textarea:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: var(--bg);
+      }
+
+      textarea {
+        min-height: 90px;
+        resize: vertical;
+        line-height: 1.5;
+      }
+
+      /* BUTTON STYLES */
+      button {
+        width: 100%;
+        background: var(--bg-elevated);
+        color: var(--text);
+        border: 1px solid var(--button-border);
+        border-radius: var(--border-radius);
+        padding: var(--button-padding);
+        font-size: 14px;
+        cursor: pointer;
+        box-sizing: border-box;
+        min-height: 44px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+      }
+
+      button:hover {
+        background: var(--bg-card);
+        border-color: var(--accent);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button.ghost {
+        background: transparent;
+        border: 1px dashed var(--button-border);
+      }
+
+      button.ghost:hover {
+        border-style: solid;
+        background: var(--bg-elevated);
+      }
+
+      /* UTILITY CLASSES */
+      .mono {
+        font-family: monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .ok {
+        color: var(--ok);
+      }
+
+      .bad {
+        color: var(--bad);
+      }
+
+      .sep {
+        height: 1px;
+        background: var(--panel-border);
+        margin: var(--spacing-md) 0;
+      }
+
+      .pill {
+        font-size: 12px;
+        background: var(--bg-elevated);
+        border: 1px solid var(--panel-border);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: 999px;
+        color: var(--muted);
+      }
+
+      /* GRID SYSTEM */
       .grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: var(--spacing-md);
+      }
+
+      .col-6 {
+        grid-column: span 6;
+      }
+
+      .col-12 {
+        grid-column: span 12;
+      }
+
+      /* TOKEN DISPLAY */
+      .tokenWrap {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
-      }
-
-      .col-6,
-      .col-12 {
-        width: 100%;
-        grid-column: unset;
+        gap: var(--spacing-sm);
       }
 
       .payload {
-        font-size: 16px;
-        font-weight: 700;
-        max-height: 200px;
+        font-family: monospace;
+        font-size: 15px;
+        line-height: 1.3;
+        font-weight: 600;
+        background: var(--bg-elevated);
+        border: 1px solid var(--panel-border);
+        border-radius: var(--border-radius);
+        padding: var(--spacing-md);
+        overflow-wrap: break-word;
+        word-break: break-all;
+        cursor: pointer;
+        user-select: text;
+        transition: background 0.2s ease;
       }
 
-      input[type=text],
-      textarea,
-      button {
-        font-size: 16px;
-        min-height: 44px;
+      .payload:hover {
+        background: var(--bg-card);
       }
 
-      .tokenWrap {
-        gap: var(--spacing-sm);
+      .payload:active {
+        opacity: 0.96;
       }
-    }
 
-    footer {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: var(--spacing-sm);
-    }
-  </style>
-</head>
+      .copyToast {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 22px;
+        background: #0f1724;
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: var(--spacing-sm) var(--spacing-md);
+        border-radius: 999px;
+        font-size: 13px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease;
+      }
 
-<body>
-  <div class="mobile-menu-toggle" id="mobileMenuToggle">
-    <div class="hamburger-icon">
-      <div class="hamburger-line"></div>
-      <div class="hamburger-line"></div>
-      <div class="hamburger-line"></div>
+      .copyToast.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .tokenBox {
+        padding: var(--spacing-sm);
+        background: var(--bg-elevated);
+        border-radius: 6px;
+        border: 1px solid var(--panel-border);
+        font-family: monospace;
+        font-size: 13px;
+        overflow-wrap: break-word;
+        word-break: break-all;
+      }
+
+      .tokenToggle {
+        display: none;
+      }
+
+      /* ENCRYPT/DECRYPT BLOCKS */
+      .encrypt-block,
+      .decrypt-block {
+        display: block;
+        margin-bottom: var(--spacing-xl);
+        padding: var(--spacing-lg);
+        background: var(--bg-card);
+        border: 1px solid var(--panel-border);
+        border-radius: var(--card-radius);
+      }
+
+      /* MOBILE MENU */
+      .mobile-menu-toggle {
+        display: none;
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 1000;
+        background: var(--bg-card);
+        border: 1px solid var(--panel-border);
+        border-radius: var(--border-radius);
+        padding: 8px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .hamburger-icon {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+      }
+
+      .hamburger-line {
+        width: 100%;
+        height: 2px;
+        background: var(--text);
+        border-radius: 1px;
+        transition: all 0.3s ease;
+      }
+
+      .mobile-menu-toggle.active .hamburger-line:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
+      }
+
+      .mobile-menu-toggle.active .hamburger-line:nth-child(2) {
+        opacity: 0;
+      }
+
+      .mobile-menu-toggle.active .hamburger-line:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -6px);
+      }
+
+      .mobile-peer-panel {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(11, 12, 15, 0.95);
+        backdrop-filter: blur(8px);
+        z-index: 999;
+        padding: 60px 16px 16px;
+        box-sizing: border-box;
+        overflow-y: auto;
+      }
+
+      .mobile-peer-content {
+        max-width: 400px;
+        margin: 0 auto;
+      }
+
+      footer {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: var(--spacing-sm);
+        text-align: center;
+        padding: var(--spacing-md);
+      }
+
+      /* MOBILE RESPONSIVE STYLES */
+      @media (max-width: 720px) {
+        :root {
+          --spacing-md: 14px;
+          --spacing-lg: 18px;
+          --spacing-xl: 24px;
+          --spacing-2xl: 32px;
+          --input-padding: 14px;
+          --button-padding: 14px;
+          --card-radius: 12px;
+        }
+
+        .wrap {
+          margin: 0;
+          padding: var(--spacing-sm);
+          padding-top: 70px;
+        }
+
+        .mobile-menu-toggle {
+          display: flex;
+        }
+
+        .peer-section {
+          display: none !important;
+        }
+
+        .mobile-peer-panel.active {
+          display: block;
+        }
+
+        /* MOBILE HEADER */
+        header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: var(--spacing-md);
+          padding: var(--spacing-lg);
+          margin-bottom: var(--spacing-lg);
+        }
+
+        h1 {
+          font-size: 20px;
+        }
+
+        .sub {
+          font-size: 14px;
+          line-height: 1.4;
+        }
+
+        .subSmall {
+          font-size: 13px;
+        }
+
+        /* MOBILE CARDS */
+        .card {
+          padding: var(--spacing-lg);
+          margin-bottom: var(--spacing-xl);
+          border-radius: var(--card-radius);
+        }
+
+        /* MOBILE GRID */
+        .grid {
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-xl);
+        }
+
+        .col-6,
+        .col-12 {
+          width: 100%;
+          grid-column: unset;
+        }
+
+        /* MOBILE FORM ELEMENTS */
+        label.hint {
+          font-size: 13px;
+          margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        textarea,
+        button,
+        select {
+          font-size: 16px;
+          min-height: 48px;
+          padding: var(--input-padding);
+          border-radius: 10px;
+        }
+
+        textarea {
+          min-height: 120px;
+        }
+
+        /* MOBILE BUTTONS */
+        button {
+          font-weight: 600;
+          letter-spacing: 0.01em;
+        }
+
+        /* MOBILE PAYLOAD */
+        .payload {
+          font-size: 14px;
+          font-weight: 600;
+          padding: var(--spacing-lg);
+          max-height: 180px;
+          overflow-y: auto;
+          line-height: 1.5;
+        }
+
+        /* MOBILE TOKEN BOX */
+        .tokenBox {
+          padding: var(--spacing-md);
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .tokenWrap {
+          gap: var(--spacing-md);
+        }
+
+        /* MOBILE SEPARATORS */
+        .sep {
+          margin: var(--spacing-lg) 0;
+        }
+
+        /* MOBILE PILLS */
+        .pill {
+          font-size: 13px;
+          padding: 6px var(--spacing-md);
+        }
+
+        /* MOBILE ENCRYPT/DECRYPT BLOCKS */
+        .encrypt-block,
+        .decrypt-block {
+          padding: var(--spacing-lg);
+          margin-bottom: var(--spacing-2xl);
+        }
+
+        /* MOBILE TOAST */
+        .copyToast {
+          bottom: 20px;
+          font-size: 14px;
+          padding: var(--spacing-md) var(--spacing-lg);
+        }
+
+        /* MOBILE FOOTER */
+        footer {
+          font-size: 13px;
+          padding: var(--spacing-lg);
+          margin-top: var(--spacing-lg);
+        }
+      }
+
+      /* EXTRA SMALL MOBILE (< 400px) */
+      @media (max-width: 400px) {
+        :root {
+          --spacing-lg: 16px;
+          --spacing-xl: 20px;
+        }
+
+        h1 {
+          font-size: 18px;
+        }
+
+        .card {
+          padding: var(--spacing-md);
+        }
+
+        input[type="text"],
+        textarea,
+        button,
+        select {
+          font-size: 16px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="mobile-menu-toggle" id="mobileMenuToggle">
+      <div class="hamburger-icon">
+        <div class="hamburger-line"></div>
+        <div class="hamburger-line"></div>
+        <div class="hamburger-line"></div>
+      </div>
     </div>
-  </div>
 
-  <div class="mobile-peer-panel" id="mobilePeerPanel">
-    <div class="mobile-peer-content">
-      <section class="card">
-        <div class="row"><span class="pill">session</span>
-          <div id="mobileStatus" class="hint">initializing</div>
+    <div class="mobile-peer-panel" id="mobilePeerPanel">
+      <div class="mobile-peer-content">
+        <section class="card">
+          <div class="row">
+            <span class="pill">session</span>
+            <div id="mobileStatus" class="hint">initializing</div>
+          </div>
+          <div class="sep"></div>
+          <div>
+            <label class="hint">your ephemeral public token</label>
+            <div class="tokenWrap">
+              <div
+                id="mobileMyToken"
+                class="mono tokenBox"
+                title="Tap to copy public token"
+              ></div>
+              <button id="mobileCopyMy">copy token</button>
+              <button id="mobileRegen">regenerate</button>
+              <button id="mobileDownloadPub" class="ghost">
+                download .txt
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top: var(--spacing-lg)">
+            <label class="hint"
+              >paste peer public token (pub1x… or pub1p…)</label
+            >
+            <input
+              id="mobilePeerToken"
+              type="text"
+              placeholder="pub1x… or pub1p…"
+            />
+            <div
+              style="
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                margin-top: 8px;
+              "
+            >
+              <button id="mobileAcceptPeer">accept peer</button>
+              <div id="mobilePeerState" class="hint"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <header>
+        <div class="hdr-left">
+          <h1>EncChat</h1>
+          <div class="sub">X25519 · HKDF-SHA256 · AES-GCM</div>
+        </div>
+      </header>
+
+      <section class="card peer-section">
+        <div class="row">
+          <span class="pill">session</span>
+          <div id="status" class="hint">initializing</div>
         </div>
         <div class="sep"></div>
-        <div>
-          <label class="hint">your ephemeral public token</label>
-          <div class="tokenWrap">
-            <div id="mobileMyToken" class="mono tokenBox" title="Tap to copy public token"></div>
-            <button id="mobileCopyMy">copy token</button>
-            <button id="mobileRegen">regenerate</button>
-            <button id="mobileDownloadPub" class="ghost">download .txt</button>
+        <div class="grid">
+          <div class="col-12">
+            <label class="hint">your ephemeral public token</label>
+            <div class="tokenWrap">
+              <div
+                id="myToken"
+                class="mono tokenBox"
+                title="Tap to copy public token"
+              ></div>
+              <button id="tokenShow" class="tokenToggle">show token</button>
+              <button id="copyMy">copy token</button>
+              <button id="regen">regenerate</button>
+              <button id="downloadPub" class="ghost">download .txt</button>
+            </div>
           </div>
-        </div>
 
-        <div style="margin-top: var(--spacing-lg);">
-          <label class="hint">paste peer public token (pub1x… or pub1p…)</label>
-          <input id="mobilePeerToken" type="text" placeholder="pub1x… or pub1p…" />
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-            <button id="mobileAcceptPeer">accept peer</button>
-            <div id="mobilePeerState" class="hint"></div>
+          <div class="col-12">
+            <label class="hint">paste peer public token (pub1x)</label>
+            <input id="peerToken" type="text" placeholder="pub1x… or pub1p…" />
+            <div
+              style="
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                margin-top: 8px;
+              "
+            >
+              <button id="acceptPeer">accept peer</button>
+              <div id="peerState" class="hint"></div>
+            </div>
           </div>
         </div>
       </section>
+
+      <section id="ops" class="card" style="display: none">
+        <div class="row">
+          <span class="pill">ops</span>
+          <div class="hint">key established</div>
+        </div>
+        <div class="sep"></div>
+        <div class="grid">
+          <div class="col-6">
+            <label class="hint">encrypt text</label>
+            <textarea id="ptIn" placeholder="message"></textarea>
+            <div style="display: flex; gap: 8px; margin-top: 8px">
+              <button id="encText">encrypt</button>
+              <button id="clrText">clear</button>
+            </div>
+            <div style="margin-top: 8px">
+              <div
+                class="hintSmall"
+                style="color: var(--muted); font-size: 12px; margin-bottom: 6px"
+              >
+                encrypted payload - tap the box to copy
+              </div>
+              <div
+                id="ctOut"
+                class="payload mono"
+                tabindex="0"
+                title="Tap to copy encrypted payload"
+              ></div>
+            </div>
+          </div>
+
+          <div class="col-6">
+            <label class="hint">decrypt payload</label>
+            <textarea id="ctIn" placeholder="paste payload"></textarea>
+            <div style="display: flex; gap: 8px; margin-top: 8px">
+              <button id="decText">decrypt</button>
+              <button id="clrCT">clear</button>
+            </div>
+            <div style="margin-top: 8px">
+              <div
+                class="hintSmall"
+                style="color: var(--muted); font-size: 12px; margin-bottom: 6px"
+              >
+                decrypted text - tap the box to copy
+              </div>
+              <div
+                id="ptOut"
+                class="payload mono"
+                tabindex="0"
+                title="Tap to copy plaintext"
+              ></div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="sep"></div>
+            <div
+              style="
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                align-items: center;
+              "
+            >
+              <div style="flex: 1 1 280px">
+                <label class="hint"
+                  >encrypt file → download <code>.enc</code></label
+                >
+                <input id="fileEnc" type="file" />
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center">
+                <button id="encFile">encrypt file</button>
+              </div>
+            </div>
+
+            <div style="height: 10px"></div>
+
+            <div
+              style="
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                align-items: center;
+              "
+            >
+              <div style="flex: 1 1 280px">
+                <label class="hint"
+                  >decrypt <code>.enc</code> → download original file</label
+                >
+                <input id="fileDec" type="file" />
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center">
+                <button id="decFile">decrypt file</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="card">
+        <div class="hint">
+          Notes: token header encodes curve: pub1x = X25519, pub1p = P-256.
+          Everything runs locally in the browser. Filenames are authenticated
+          but not secret.
+        </div>
+      </footer>
     </div>
-  </div>
 
-  <div class="wrap">
-    <header>
-      <div class="hdr-left">
-        <h1>EncChat</h1>
-        <div class="sub">P-256 · HKDF-SHA256 · AES-GCM</div>
-      </div>
-    </header>
+    <div id="copyToast" class="copyToast">copied</div>
 
-    <section class="card peer-section">
-      <div class="row"><span class="pill">session</span>
-        <div id="status" class="hint">initializing</div>
-      </div>
-      <div class="sep"></div>
-      <div class="grid">
-        <div class="col-12">
-          <label class="hint">your ephemeral public token</label>
-          <div class="tokenWrap">
-            <div id="myToken" class="mono tokenBox" title="Tap to copy public token"></div>
-            <button id="tokenShow" class="tokenToggle">show token</button>
-            <button id="copyMy">copy token</button>
-            <button id="regen">regenerate</button>
-            <button id="downloadPub" class="ghost">download .txt</button>
-          </div>
-        </div>
+    <script>
+      // ========================================
+      // Pure JavaScript X25519 Implementation
+      // ========================================
+      const P = 2n ** 255n - 19n;
 
-        <div class="col-12">
-          <label class="hint">paste peer public token (pub1x… or pub1p…)</label>
-          <input id="peerToken" type="text" placeholder="pub1x… or pub1p…" />
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-            <button id="acceptPeer">accept peer</button>
-            <div id="peerState" class="hint"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="ops" class="card" style="display:none">
-      <div class="row"><span class="pill">ops</span>
-        <div class="hint">key established</div>
-      </div>
-      <div class="sep"></div>
-      <div class="grid">
-        <div class="col-6">
-          <label class="hint">encrypt text</label>
-          <textarea id="ptIn" placeholder="message"></textarea>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button id="encText">encrypt</button>
-            <button id="clrText">clear</button>
-          </div>
-          <div style="margin-top:8px">
-            <div class="hintSmall" style="color:var(--muted);font-size:12px;margin-bottom:6px">encrypted payload - tap
-              the box to copy</div>
-            <div id="ctOut" class="payload mono" tabindex="0" title="Tap to copy encrypted payload"></div>
-          </div>
-        </div>
-
-        <div class="col-6">
-          <label class="hint">decrypt payload</label>
-          <textarea id="ctIn" placeholder="paste payload"></textarea>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button id="decText">decrypt</button>
-            <button id="clrCT">clear</button>
-          </div>
-          <div style="margin-top:8px">
-            <div class="hintSmall" style="color:var(--muted);font-size:12px;margin-bottom:6px">decrypted text - tap the
-              box to copy</div>
-            <div id="ptOut" class="payload mono" tabindex="0" title="Tap to copy plaintext"></div>
-          </div>
-        </div>
-
-        <div class="col-12">
-          <div class="sep"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <div style="flex:1 1 280px">
-              <label class="hint">encrypt file → download <code>.enc</code></label>
-              <input id="fileEnc" type="file" />
-            </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button id="encFile">encrypt file</button>
-            </div>
-          </div>
-
-          <div style="height:10px"></div>
-
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <div style="flex:1 1 280px">
-              <label class="hint">decrypt <code>.enc</code> → download original file</label>
-              <input id="fileDec" type="file" />
-            </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button id="decFile">decrypt file</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <footer class="card">
-      <div class="hint">Notes: token header encodes curve: pub1x = X25519, pub1p = P-256. Everything runs locally in the
-        browser. Filenames are authenticated but not secret.</div>
-    </footer>
-  </div>
-
-  <div id="copyToast" class="copyToast">copied</div>
-
-  <script>
-    let myKeyPair = null;
-    let myPubRaw = null;
-    let symKey = null;
-    let curveInUse = null;
-
-    const tv = id => document.getElementById(id);
-    const toast = tv('copyToast');
-
-    function showToast(msg = 'copied', ms = 1200) {
-      toast.textContent = msg;
-      toast.classList.add('show');
-      clearTimeout(toast._t);
-      toast._t = setTimeout(() => toast.classList.remove('show'), ms);
-    }
-
-    function b64urlEncode(u8) {
-      const s = btoa(String.fromCharCode(...u8));
-      return s.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    }
-    function b64urlDecode(s) {
-      s = s.replace(/-/g, '+').replace(/_/g, '/');
-      while (s.length % 4) s += '=';
-      const bin = atob(s);
-      const out = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-      return out;
-    }
-    function uint16be(n) { return new Uint8Array([(n >> 8) & 0xff, n & 0xff]); }
-    function readUint16be(u8, off) { return (u8[off] << 8) | u8[off + 1]; }
-    function arrayBufferSliceOf(u8) { if (u8.buffer && (u8.byteOffset !== 0 || u8.byteLength !== u8.buffer.byteLength)) return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength); return u8.buffer || u8; }
-
-    async function detectX25519Support() {
-      try {
-        const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'X25519' }, true, ['deriveBits']);
-        const pub = await crypto.subtle.exportKey('raw', kp.publicKey);
-        const peer = await crypto.subtle.importKey('raw', pub, { name: 'ECDH', namedCurve: 'X25519' }, false, []);
-        const secret = await crypto.subtle.deriveBits({ name: 'ECDH', public: peer }, kp.privateKey, 256);
-        try { if (secret instanceof ArrayBuffer) new Uint8Array(secret).fill(0); } catch (e) { }
-        return true;
-      } catch (e) { return false; }
-    }
-
-    async function generateEphemeral() {
-      tv('status').textContent = 'detecting curve support';
-      tv('mobileStatus').textContent = 'detecting curve support';
-      const haveX = await detectX25519Support();
-      if (haveX) {
-        curveInUse = 'X25519';
-        myKeyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'X25519' }, true, ['deriveBits']);
-        const rawPub = new Uint8Array(await crypto.subtle.exportKey('raw', myKeyPair.publicKey));
-        myPubRaw = rawPub;
-        const token = 'pub1x' + b64urlEncode(rawPub);
-        tv('myToken').textContent = token;
-        tv('mobileMyToken').textContent = token;
-        tv('status').textContent = 'ephemeral X25519 ready';
-        tv('mobileStatus').textContent = 'ephemeral X25519 ready';
-      } else {
-        curveInUse = 'P-256';
-        myKeyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-        const rawPub = new Uint8Array(await crypto.subtle.exportKey('raw', myKeyPair.publicKey));
-        myPubRaw = rawPub;
-        const token = 'pub1p' + b64urlEncode(rawPub);
-        tv('myToken').textContent = token;
-        tv('mobileMyToken').textContent = token;
-        tv('status').textContent = 'ephemeral P-256 ready';
-        tv('mobileStatus').textContent = 'ephemeral P-256 ready';
+      function modP(x) {
+        x = x % P;
+        return x < 0n ? x + P : x;
       }
-      tv('peerState').textContent = '';
-      tv('mobilePeerState').textContent = '';
-      showOps(false);
-    }
 
-    function parsePeerToken(token) {
-      if (!token || !token.startsWith('pub1')) throw new Error('bad prefix');
-      const rest = token.slice(4);
-      const tag = rest[0];
-      const rawB64 = rest.slice(1);
-      const raw = b64urlDecode(rawB64);
-      if (tag === 'x' && raw.length === 32) return { curve: 'X25519', raw };
-      if (tag === 'p' && raw.length === 65) return { curve: 'P-256', raw };
-      throw new Error('unsupported token or invalid length');
-    }
-
-    async function importPeerPublic(parsed) {
-      const ab = arrayBufferSliceOf(parsed.raw);
-      if (parsed.curve === 'X25519') {
-        try { return await crypto.subtle.importKey('raw', ab, { name: 'ECDH', namedCurve: 'X25519' }, false, []); } catch (e) { }
-        try { return await crypto.subtle.importKey('raw', ab, { name: 'X25519' }, false, []); } catch (e) { }
-        throw new Error('importKey X25519 failed');
-      } else {
-        return await crypto.subtle.importKey('raw', ab, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+      function modPow(base, exp, mod) {
+        let result = 1n;
+        base = base % mod;
+        while (exp > 0n) {
+          if (exp % 2n === 1n) result = (result * base) % mod;
+          exp = exp >> 1n;
+          base = (base * base) % mod;
+        }
+        return result;
       }
-    }
 
-    async function deriveSymmetricKeyFromShared(sharedBitsArrayBuffer) {
-      const salt = new Uint8Array();
-      const info = new TextEncoder().encode('ecdh:aesgcm');
-      const hk = await crypto.subtle.importKey('raw', sharedBitsArrayBuffer, 'HKDF', false, ['deriveKey']);
-      const aesKey = await crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt, info }, hk, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-      try { if (sharedBitsArrayBuffer instanceof ArrayBuffer) new Uint8Array(sharedBitsArrayBuffer).fill(0); } catch (e) { }
-      return aesKey;
-    }
+      function modInv(x, p) {
+        return modPow(x, p - 2n, p);
+      }
 
-    async function acceptPeerLogic(tokenInput, stateEl, statusEl) {
-      try {
-        const token = tokenInput.value.trim();
-        if (!token) { stateEl.textContent = 'empty'; stateEl.className = 'bad'; return; }
-        let parsed;
-        try { parsed = parsePeerToken(token); } catch (e) { stateEl.textContent = 'invalid token'; stateEl.className = 'bad'; return; }
+      function bytesToBigInt(bytes) {
+        let result = 0n;
+        for (let i = 0; i < bytes.length; i++) {
+          result += BigInt(bytes[i]) << (8n * BigInt(i));
+        }
+        return result;
+      }
 
-        if (curveInUse === parsed.curve) {
-          let peerKey;
-          try { peerKey = await importPeerPublic(parsed); } catch (e) { stateEl.textContent = 'import failed'; stateEl.className = 'bad'; return; }
+      function bigIntToBytes(n) {
+        const bytes = new Uint8Array(32);
+        for (let i = 0; i < 32; i++) {
+          bytes[i] = Number((n >> (8n * BigInt(i))) & 0xffn);
+        }
+        return bytes;
+      }
 
-          if (parsed.curve === 'X25519') {
-            try {
-              const bits = await crypto.subtle.deriveBits({ name: 'ECDH', public: peerKey }, myKeyPair.privateKey, 256);
-              symKey = await deriveSymmetricKeyFromShared(bits);
-              stateEl.textContent = 'peer accepted (X25519)'; statusEl.textContent = 'symmetric key derived'; showOps(true); return;
-            } catch (e1) {
-              try { symKey = await crypto.subtle.deriveKey({ name: 'ECDH', public: peerKey }, myKeyPair.privateKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']); stateEl.textContent = 'peer accepted (X25519 deriveKey)'; statusEl.textContent = 'symmetric key derived'; showOps(true); return; } catch (e2) { }
-              try {
-                const salt = new Uint8Array(); const info = new TextEncoder().encode('ecdh:aesgcm');
-                const hkKey = await crypto.subtle.deriveKey({ name: 'ECDH', public: peerKey }, myKeyPair.privateKey, { name: 'HKDF', hash: 'SHA-256', salt, info }, false, ['deriveKey']);
-                symKey = await crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt, info }, hkKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-                stateEl.textContent = 'peer accepted (X25519 alt)'; statusEl.textContent = 'symmetric key derived'; showOps(true); return;
-              } catch (e3) { }
-            }
-            stateEl.textContent = 'derive failed (X25519)'; stateEl.className = 'bad'; return;
+      function clampPrivateKey(key) {
+        const k = new Uint8Array(key);
+        k[0] &= 248;
+        k[31] &= 127;
+        k[31] |= 64;
+        return k;
+      }
+
+      function x25519(k, u) {
+        k = clampPrivateKey(k);
+        const kInt = bytesToBigInt(k);
+        const uInt = bytesToBigInt(u);
+
+        let x1 = uInt;
+        let x2 = 1n;
+        let z2 = 0n;
+        let x3 = uInt;
+        let z3 = 1n;
+        let swap = 0n;
+
+        for (let t = 254; t >= 0; t--) {
+          const kt = (kInt >> BigInt(t)) & 1n;
+          swap ^= kt;
+
+          if (swap) {
+            [x2, x3] = [x3, x2];
+            [z2, z3] = [z3, z2];
           }
+          swap = kt;
 
-          if (parsed.curve === 'P-256') {
-            try {
-              const bits = await crypto.subtle.deriveBits({ name: 'ECDH', public: peerKey }, myKeyPair.privateKey, 256);
-              symKey = await deriveSymmetricKeyFromShared(bits);
-              stateEl.textContent = 'peer accepted (P-256)'; statusEl.textContent = 'symmetric key derived'; showOps(true); return;
-            } catch (e1) {
-              try { symKey = await crypto.subtle.deriveKey({ name: 'ECDH', public: peerKey }, myKeyPair.privateKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']); stateEl.textContent = 'peer accepted (P-256 deriveKey)'; statusEl.textContent = 'symmetric key derived'; showOps(true); return; } catch (e2) { stateEl.textContent = 'derive failed (P-256)'; stateEl.className = 'bad'; return; }
-            }
-          }
+          const A = modP(x2 + z2);
+          const AA = modP(A * A);
+          const B = modP(x2 - z2);
+          const BB = modP(B * B);
+          const E = modP(AA - BB);
+          const C = modP(x3 + z3);
+          const D = modP(x3 - z3);
+          const DA = modP(D * A);
+          const CB = modP(C * B);
+
+          x3 = modP((DA + CB) * (DA + CB));
+          z3 = modP(x1 * (DA - CB) * (DA - CB));
+          x2 = modP(AA * BB);
+          z2 = modP(E * (AA + modP(121665n * E)));
         }
 
+        if (swap) {
+          [x2, x3] = [x3, x2];
+          [z2, z3] = [z3, z2];
+        }
+
+        const result = modP(x2 * modInv(z2, P));
+        return bigIntToBytes(result);
+      }
+
+      function generateX25519PrivateKey() {
+        const key = new Uint8Array(32);
+        crypto.getRandomValues(key);
+        return key;
+      }
+
+      function computeX25519PublicKey(privateKey) {
+        const basePoint = new Uint8Array(32);
+        basePoint[0] = 9;
+        return x25519(privateKey, basePoint);
+      }
+
+      function x25519SharedSecret(myPrivate, theirPublic) {
+        return x25519(myPrivate, theirPublic);
+      }
+
+      // ========================================
+      // App State & Utilities
+      // ========================================
+      let myPrivateKey = null;
+      let myPublicKey = null;
+      let symKey = null;
+
+      const tv = (id) => document.getElementById(id);
+      const toast = tv("copyToast");
+
+      function showToast(msg = "copied", ms = 1200) {
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(toast._t);
+        toast._t = setTimeout(() => toast.classList.remove("show"), ms);
+      }
+
+      function b64urlEncode(u8) {
+        const s = btoa(String.fromCharCode(...u8));
+        return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      }
+
+      function b64urlDecode(s) {
+        s = s.replace(/-/g, "+").replace(/_/g, "/");
+        while (s.length % 4) s += "=";
+        const bin = atob(s);
+        const out = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+        return out;
+      }
+
+      function uint16be(n) {
+        return new Uint8Array([(n >> 8) & 0xff, n & 0xff]);
+      }
+      function readUint16be(u8, off) {
+        return (u8[off] << 8) | u8[off + 1];
+      }
+
+      async function deriveSymmetricKeyFromShared(sharedSecret) {
+        const salt = new Uint8Array();
+        const info = new TextEncoder().encode("ecdh:aesgcm");
+        const hk = await crypto.subtle.importKey(
+          "raw",
+          sharedSecret,
+          "HKDF",
+          false,
+          ["deriveKey"]
+        );
+        const aesKey = await crypto.subtle.deriveKey(
+          { name: "HKDF", hash: "SHA-256", salt, info },
+          hk,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["encrypt", "decrypt"]
+        );
         try {
-          if (parsed.curve === 'X25519') {
-            const tmpKP = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'X25519' }, true, ['deriveBits']);
-            const peerKey = await importPeerPublic(parsed);
-            const bits = await crypto.subtle.deriveBits({ name: 'ECDH', public: peerKey }, tmpKP.privateKey, 256);
-            symKey = await deriveSymmetricKeyFromShared(bits);
-            stateEl.textContent = 'peer accepted (tmp X25519 key)'; statusEl.textContent = 'symmetric key derived (tmp)'; showOps(true); return;
-          } else {
-            const tmpKP = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-            const peerKey = await importPeerPublic(parsed);
-            const bits = await crypto.subtle.deriveBits({ name: 'ECDH', public: peerKey }, tmpKP.privateKey, 256);
-            symKey = await deriveSymmetricKeyFromShared(bits);
-            stateEl.textContent = 'peer accepted (tmp P-256 key)'; statusEl.textContent = 'symmetric key derived (tmp)'; showOps(true); return;
+          new Uint8Array(sharedSecret).fill(0);
+        } catch (e) {}
+        return aesKey;
+      }
+
+      async function generateEphemeral() {
+        tv("status").textContent = "generating X25519 keypair";
+        tv("mobileStatus").textContent = "generating X25519 keypair";
+
+        myPrivateKey = generateX25519PrivateKey();
+        myPublicKey = computeX25519PublicKey(myPrivateKey);
+
+        const token = "pub1x" + b64urlEncode(myPublicKey);
+        tv("myToken").textContent = token;
+        tv("mobileMyToken").textContent = token;
+        tv("status").textContent = "ephemeral X25519 ready";
+        tv("mobileStatus").textContent = "ephemeral X25519 ready";
+
+        tv("peerState").textContent = "";
+        tv("mobilePeerState").textContent = "";
+        showOps(false);
+      }
+
+      function parsePeerToken(token) {
+        if (!token || !token.startsWith("pub1x"))
+          throw new Error("invalid token (must start with pub1x)");
+        const rawB64 = token.slice(5);
+        const raw = b64urlDecode(rawB64);
+        if (raw.length !== 32)
+          throw new Error("invalid X25519 public key length");
+        return raw;
+      }
+
+      async function acceptPeerLogic(tokenInput, stateEl, statusEl) {
+        try {
+          const token = tokenInput.value.trim();
+          if (!token) {
+            stateEl.textContent = "empty";
+            stateEl.className = "bad";
+            return;
           }
-        } catch (e) { console.warn('mutual fallback failed', e); }
 
-        stateEl.textContent = 'derive failed: incompatible engines'; stateEl.className = 'bad';
-      } catch (e) {
-        console.error('acceptPeer unexpected', e);
-        stateEl.textContent = 'error: ' + (e && e.message ? e.message : String(e)); stateEl.className = 'bad';
+          let peerPublic;
+          try {
+            peerPublic = parsePeerToken(token);
+          } catch (e) {
+            stateEl.textContent = "invalid token";
+            stateEl.className = "bad";
+            return;
+          }
+
+          const sharedSecret = x25519SharedSecret(myPrivateKey, peerPublic);
+          symKey = await deriveSymmetricKeyFromShared(sharedSecret.buffer);
+
+          stateEl.textContent = "peer accepted (X25519)";
+          stateEl.className = "ok";
+          statusEl.textContent = "symmetric key derived";
+          showOps(true);
+        } catch (e) {
+          console.error("acceptPeer error", e);
+          stateEl.textContent = "error: " + (e.message || String(e));
+          stateEl.className = "bad";
+        }
       }
-    }
 
-    function showOps(on) { tv('ops').style.display = on ? 'block' : 'none'; }
-    function clearText() { tv('ptIn').value = ''; tv('ctOut').textContent = ''; }
-    function clearCTin() { tv('ctIn').value = ''; tv('ptOut').textContent = ''; }
+      function showOps(on) {
+        tv("ops").style.display = on ? "block" : "none";
+      }
+      function clearText() {
+        tv("ptIn").value = "";
+        tv("ctOut").textContent = "";
+      }
+      function clearCTin() {
+        tv("ctIn").value = "";
+        tv("ptOut").textContent = "";
+      }
 
-    async function encryptText() {
-      if (!symKey) { alert('no symmetric key'); return; }
-      const pt = new TextEncoder().encode(tv('ptIn').value);
-      if (pt.length === 0) { alert('no plaintext'); return; }
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, symKey, pt);
-      const payload = new Uint8Array(iv.length + ct.byteLength);
-      payload.set(iv, 0); payload.set(new Uint8Array(ct), iv.length);
-      const txt = b64urlEncode(payload);
-      tv('ctOut').textContent = txt;
-      try { (new Uint8Array(pt)).fill(0); } catch (e) { }
-    }
+      async function encryptText() {
+        if (!symKey) {
+          alert("no symmetric key");
+          return;
+        }
+        const pt = new TextEncoder().encode(tv("ptIn").value);
+        if (pt.length === 0) {
+          alert("no plaintext");
+          return;
+        }
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ct = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv },
+          symKey,
+          pt
+        );
+        const payload = new Uint8Array(iv.length + ct.byteLength);
+        payload.set(iv, 0);
+        payload.set(new Uint8Array(ct), iv.length);
+        const txt = b64urlEncode(payload);
+        tv("ctOut").textContent = txt;
+        try {
+          pt.fill(0);
+        } catch (e) {}
+      }
 
-    async function decryptText() {
-      if (!symKey) { alert('no key'); return; }
-      const s = tv('ctIn').value.trim();
-      if (!s) { alert('no payload'); return; }
-      try {
-        const payload = b64urlDecode(s);
-        if (payload.length < 12 + 16) { tv('ptOut').textContent = 'payload too small'; return; }
-        const iv = payload.slice(0, 12);
-        const ct = payload.slice(12);
-        const ptbuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, symKey, ct);
-        const pt = new TextDecoder().decode(ptbuf);
-        tv('ptOut').textContent = pt;
-        try { (new Uint8Array(ptbuf)).fill(0); } catch (e) { }
-      } catch (e) { console.error(e); tv('ptOut').textContent = '*** decrypt/auth failed ***'; }
-    }
+      async function decryptText() {
+        if (!symKey) {
+          alert("no key");
+          return;
+        }
+        const s = tv("ctIn").value.trim();
+        if (!s) {
+          alert("no payload");
+          return;
+        }
+        try {
+          const payload = b64urlDecode(s);
+          if (payload.length < 12 + 16) {
+            tv("ptOut").textContent = "payload too small";
+            return;
+          }
+          const iv = payload.slice(0, 12);
+          const ct = payload.slice(12);
+          const ptbuf = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv },
+            symKey,
+            ct
+          );
+          const pt = new TextDecoder().decode(ptbuf);
+          tv("ptOut").textContent = pt;
+          try {
+            new Uint8Array(ptbuf).fill(0);
+          } catch (e) {}
+        } catch (e) {
+          console.error(e);
+          tv("ptOut").textContent = "*** decrypt/auth failed ***";
+        }
+      }
 
-    async function encryptFile() {
-      if (!symKey) { alert('no key'); return; }
-      const fi = tv('fileEnc').files[0];
-      if (!fi) { alert('pick a file'); return; }
-      const arr = new Uint8Array(await fi.arrayBuffer());
-      const fname = new TextEncoder().encode(fi.name);
-      if (fname.length > 0xFFFF) { alert('filename too long'); return; }
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: fname }, symKey, arr);
-      const header = new Uint8Array(2 + fname.length + iv.length + ct.byteLength);
-      header.set(uint16be(fname.length), 0);
-      header.set(fname, 2);
-      header.set(iv, 2 + fname.length);
-      header.set(new Uint8Array(ct), 2 + fname.length + iv.length);
-      const blob = new Blob([header], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = fi.name + '.enc'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      try { (new Uint8Array(arr)).fill(0); } catch (e) { }
-    }
-
-    async function decryptFile() {
-      if (!symKey) { alert('no key'); return; }
-      const fi = tv('fileDec').files[0];
-      if (!fi) { alert('pick a file'); return; }
-      const buf = new Uint8Array(await fi.arrayBuffer());
-      if (buf.length < 2 + 12 + 16) { alert('file too small'); return; }
-      const namelen = readUint16be(buf, 0);
-      if (buf.length < 2 + namelen + 12 + 16) { alert('file truncated'); return; }
-      const fname = buf.slice(2, 2 + namelen);
-      const ivOff = 2 + namelen;
-      const iv = buf.slice(ivOff, ivOff + 12);
-      const ct = buf.slice(ivOff + 12);
-      try {
-        const ptbuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, additionalData: fname }, symKey, ct);
-        const outName = new TextDecoder().decode(fname);
-        const blob = new Blob([ptbuf], { type: 'application/octet-stream' });
+      async function encryptFile() {
+        if (!symKey) {
+          alert("no key");
+          return;
+        }
+        const fi = tv("fileEnc").files[0];
+        if (!fi) {
+          alert("pick a file");
+          return;
+        }
+        const arr = new Uint8Array(await fi.arrayBuffer());
+        const fname = new TextEncoder().encode(fi.name);
+        if (fname.length > 0xffff) {
+          alert("filename too long");
+          return;
+        }
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ct = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv, additionalData: fname },
+          symKey,
+          arr
+        );
+        const header = new Uint8Array(
+          2 + fname.length + iv.length + ct.byteLength
+        );
+        header.set(uint16be(fname.length), 0);
+        header.set(fname, 2);
+        header.set(iv, 2 + fname.length);
+        header.set(new Uint8Array(ct), 2 + fname.length + iv.length);
+        const blob = new Blob([header], { type: "application/octet-stream" });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = outName; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-        try { (new Uint8Array(ptbuf)).fill(0); } catch (e) { }
-      } catch (e) { console.error(e); alert('decrypt/auth failed'); }
-    }
-
-    function downloadText(filename, text) {
-      const b = new Blob([text], { type: 'text/plain' });
-      const url = URL.createObjectURL(b);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    async function copyText(text) {
-      try {
-        await navigator.clipboard.writeText(text);
-        showToast('copied');
-      } catch (e) {
-        showToast('copy failed');
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fi.name + ".enc";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        try {
+          arr.fill(0);
+        } catch (e) {}
       }
-    }
 
-    function bindPayloadCopy(elem) {
-      elem.addEventListener('click', () => { const t = elem.textContent.trim(); if (t) copyText(t); });
-      elem.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); const t = elem.textContent.trim(); if (t) copyText(t); } });
-    }
+      async function decryptFile() {
+        if (!symKey) {
+          alert("no key");
+          return;
+        }
+        const fi = tv("fileDec").files[0];
+        if (!fi) {
+          alert("pick a file");
+          return;
+        }
+        const buf = new Uint8Array(await fi.arrayBuffer());
+        if (buf.length < 2 + 12 + 16) {
+          alert("file too small");
+          return;
+        }
+        const namelen = readUint16be(buf, 0);
+        if (buf.length < 2 + namelen + 12 + 16) {
+          alert("file truncated");
+          return;
+        }
+        const fname = buf.slice(2, 2 + namelen);
+        const ivOff = 2 + namelen;
+        const iv = buf.slice(ivOff, ivOff + 12);
+        const ct = buf.slice(ivOff + 12);
+        try {
+          const ptbuf = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv, additionalData: fname },
+            symKey,
+            ct
+          );
+          const outName = new TextDecoder().decode(fname);
+          const blob = new Blob([ptbuf], { type: "application/octet-stream" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = outName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          try {
+            new Uint8Array(ptbuf).fill(0);
+          } catch (e) {}
+        } catch (e) {
+          console.error(e);
+          alert("decrypt/auth failed");
+        }
+      }
 
-    function setupMobileMenu() {
-      const menuToggle = tv('mobileMenuToggle');
-      const mobilePanel = tv('mobilePeerPanel');
+      function downloadText(filename, text) {
+        const b = new Blob([text], { type: "text/plain" });
+        const url = URL.createObjectURL(b);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
 
-      // By default, menu is open (active)
-      menuToggle.classList.add('active');
-      mobilePanel.classList.add('active');
+      async function copyText(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast("copied");
+        } catch (e) {
+          showToast("copy failed");
+        }
+      }
 
-      menuToggle.addEventListener('click', () => {
-        menuToggle.classList.toggle('active');
-        mobilePanel.classList.toggle('active');
+      function bindPayloadCopy(elem) {
+        elem.addEventListener("click", () => {
+          const t = elem.textContent.trim();
+          if (t) copyText(t);
+        });
+        elem.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            const t = elem.textContent.trim();
+            if (t) copyText(t);
+          }
+        });
+      }
+
+      function setupMobileMenu() {
+        const menuToggle = tv("mobileMenuToggle");
+        const mobilePanel = tv("mobilePeerPanel");
+
+        menuToggle.classList.add("active");
+        mobilePanel.classList.add("active");
+
+        menuToggle.addEventListener("click", () => {
+          menuToggle.classList.toggle("active");
+          mobilePanel.classList.toggle("active");
+        });
+
+        mobilePanel.addEventListener("click", (e) => {
+          if (e.target === mobilePanel) {
+            menuToggle.classList.remove("active");
+            mobilePanel.classList.remove("active");
+          }
+        });
+      }
+
+      tv("regen").addEventListener("click", generateEphemeral);
+      tv("mobileRegen").addEventListener("click", generateEphemeral);
+
+      tv("copyMy").addEventListener("click", async () => {
+        const t = tv("myToken").textContent.trim();
+        if (t) copyText(t);
+      });
+      tv("mobileCopyMy").addEventListener("click", async () => {
+        const t = tv("mobileMyToken").textContent.trim();
+        if (t) copyText(t);
       });
 
-      mobilePanel.addEventListener('click', (e) => {
-        if (e.target === mobilePanel) {
-          menuToggle.classList.remove('active');
-          mobilePanel.classList.remove('active');
+      tv("downloadPub").addEventListener("click", () => {
+        if (tv("myToken").textContent)
+          downloadText("pub1.txt", tv("myToken").textContent);
+      });
+      tv("mobileDownloadPub").addEventListener("click", () => {
+        if (tv("mobileMyToken").textContent)
+          downloadText("pub1.txt", tv("mobileMyToken").textContent);
+      });
+
+      tv("acceptPeer").addEventListener("click", () => {
+        acceptPeerLogic(tv("peerToken"), tv("peerState"), tv("status"));
+      });
+      tv("mobileAcceptPeer").addEventListener("click", () => {
+        acceptPeerLogic(
+          tv("mobilePeerToken"),
+          tv("mobilePeerState"),
+          tv("mobileStatus")
+        );
+        tv("peerToken").value = tv("mobilePeerToken").value;
+      });
+
+      tv("encText").addEventListener("click", encryptText);
+      tv("clrText").addEventListener("click", clearText);
+      tv("decText").addEventListener("click", decryptText);
+      tv("clrCT").addEventListener("click", clearCTin);
+      tv("encFile").addEventListener("click", encryptFile);
+      tv("decFile").addEventListener("click", decryptFile);
+
+      tv("tokenShow").addEventListener("click", () => {
+        const box = tv("myToken");
+        if (box.style.display === "block") {
+          box.style.display = "none";
+          tv("tokenShow").textContent = "show token";
+        } else {
+          box.style.display = "block";
+          tv("tokenShow").textContent = "hide token";
         }
       });
-    }
 
-    tv('regen').addEventListener('click', generateEphemeral);
-    tv('mobileRegen').addEventListener('click', generateEphemeral);
+      window.addEventListener("DOMContentLoaded", () => {
+        bindPayloadCopy(tv("ctOut"));
+        bindPayloadCopy(tv("ptOut"));
+        bindPayloadCopy(tv("myToken"));
+        bindPayloadCopy(tv("mobileMyToken"));
+        setupMobileMenu();
+      });
 
-    tv('copyMy').addEventListener('click', async () => {
-      const t = tv('myToken').textContent.trim();
-      if (t) copyText(t);
-    });
-    tv('mobileCopyMy').addEventListener('click', async () => {
-      const t = tv('mobileMyToken').textContent.trim();
-      if (t) copyText(t);
-    });
+      generateEphemeral().catch((e) => {
+        console.error(e);
+        tv("status").textContent = "init failed";
+        tv("mobileStatus").textContent = "init failed";
+      });
 
-    tv('downloadPub').addEventListener('click', () => {
-      if (tv('myToken').textContent) downloadText('pub1.txt', tv('myToken').textContent);
-    });
-    tv('mobileDownloadPub').addEventListener('click', () => {
-      if (tv('mobileMyToken').textContent) downloadText('pub1.txt', tv('mobileMyToken').textContent);
-    });
-
-    tv('acceptPeer').addEventListener('click', () => {
-      acceptPeerLogic(tv('peerToken'), tv('peerState'), tv('status'));
-    });
-    tv('mobileAcceptPeer').addEventListener('click', () => {
-      acceptPeerLogic(tv('mobilePeerToken'), tv('mobilePeerState'), tv('mobileStatus'));
-      tv('peerToken').value = tv('mobilePeerToken').value;
-    });
-
-    tv('encText').addEventListener('click', encryptText);
-    tv('clrText').addEventListener('click', clearText);
-    tv('decText').addEventListener('click', decryptText);
-    tv('clrCT').addEventListener('click', clearCTin);
-    tv('encFile').addEventListener('click', encryptFile);
-    tv('decFile').addEventListener('click', decryptFile);
-
-    tv('tokenShow').addEventListener('click', () => {
-      const box = tv('myToken');
-      if (box.style.display === 'block') {
-        box.style.display = 'none';
-        tv('tokenShow').textContent = 'show token';
-      } else {
-        box.style.display = 'block';
-        tv('tokenShow').textContent = 'hide token';
-      }
-    });
-
-    window.addEventListener('DOMContentLoaded', () => {
-      bindPayloadCopy(tv('ctOut'));
-      bindPayloadCopy(tv('ptOut'));
-      bindPayloadCopy(tv('myToken'));
-      bindPayloadCopy(tv('mobileMyToken'));
-      setupMobileMenu();
-    });
-
-    generateEphemeral().catch(e => {
-      console.error(e);
-      tv('status').textContent = 'init failed';
-      tv('mobileStatus').textContent = 'init failed';
-    });
-
-    window.addEventListener('unload', () => {
-      try {
-        if (myPubRaw) myPubRaw.fill(0);
-        myPubRaw = null;
-        symKey = null;
-        myKeyPair = null;
-      } catch (e) { }
-    });
-  </script>
-</body>
-
+      window.addEventListener("unload", () => {
+        try {
+          if (myPrivateKey) myPrivateKey.fill(0);
+          if (myPublicKey) myPublicKey.fill(0);
+          myPrivateKey = null;
+          myPublicKey = null;
+          symKey = null;
+        } catch (e) {}
+      });
+    </script>
+  </body>
 </html>
