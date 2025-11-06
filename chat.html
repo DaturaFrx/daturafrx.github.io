@@ -215,11 +215,6 @@
       gap: 20px;
     }
 
-    .file-input-wrapper {
-      position: relative;
-      margin-top: 10px;
-    }
-
     input[type="file"] {
       width: 100%;
       padding: 12px;
@@ -248,6 +243,7 @@
       transition: opacity 0.3s;
       pointer-events: none;
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      z-index: 1000;
     }
 
     .toast.show {
@@ -293,7 +289,7 @@
 <body>
   <div class="container">
     <h1>🔒 Chat Cifrado</h1>
-    <div class="subtitle">Encriptación de extremo a extremo</div>
+    <div class="subtitle">X25519 · HKDF-SHA256 · AES-GCM</div>
 
     <div class="instructions">
       <h2>📖 ¿Cómo usar?</h2>
@@ -309,27 +305,30 @@
     <div class="card">
       <div class="card-title">
         <span class="status-dot" id="statusDot"></span>
-        <span>Tu Sesión</span>
+        <span id="status">Inicializando...</span>
       </div>
       
       <label>🔑 Tu Token Público (compártelo con tu amigo)</label>
-      <input type="text" id="myToken" readonly>
+      <div class="output-box" id="myToken" onclick="copyMyToken()" style="cursor: pointer;">
+        Generando token...
+      </div>
       <div class="button-group">
         <button onclick="copyMyToken()">📋 Copiar Token</button>
         <button class="secondary" onclick="regenerateKey()">🔄 Nuevo Token</button>
+        <button class="ghost" onclick="downloadPubToken()">💾 Descargar .txt</button>
       </div>
     </div>
 
     <div class="card">
       <div class="card-title">🤝 Conectar con tu amigo</div>
       
-      <label>Pega el token público de tu amigo aquí</label>
-      <input type="text" id="peerToken" placeholder="Pega el token aquí...">
+      <label>Pega el token público de tu amigo aquí (pub1x...)</label>
+      <input type="text" id="peerToken" placeholder="pub1x...">
       <button onclick="connectPeer()">✅ Conectar</button>
-      <div id="peerStatus" style="color: #95a5a6; font-size: 13px; margin-top: 10px; text-align: center;"></div>
+      <div id="peerState" style="color: #95a5a6; font-size: 13px; margin-top: 10px; text-align: center;"></div>
     </div>
 
-    <div id="chatSection" style="display: none;">
+    <div id="ops" style="display: none;">
       <div class="warning">
         ⚠️ <strong>Importante:</strong> Nunca envíes tu token público y un mensaje cifrado en el mismo lugar. Envía tu token por un canal (ej: WhatsApp) y los mensajes cifrados por otro (ej: Email).
       </div>
@@ -339,12 +338,15 @@
           <div class="card-title">📝 Enviar Mensaje</div>
           
           <label>Escribe tu mensaje secreto</label>
-          <textarea id="plaintext" placeholder="Hola, este es mi mensaje secreto..."></textarea>
+          <textarea id="ptIn" placeholder="Hola, este es mi mensaje secreto..."></textarea>
           
-          <button onclick="encryptMessage()">🔒 Cifrar Mensaje</button>
+          <div class="button-group">
+            <button onclick="encryptText()">🔒 Cifrar</button>
+            <button class="ghost" onclick="clearText()">🗑️ Limpiar</button>
+          </div>
           
-          <label style="margin-top: 20px;">Mensaje cifrado (copia y envía esto)</label>
-          <div id="cipherOutput" class="output-box empty" onclick="copyText('cipherOutput')">
+          <label style="margin-top: 20px;">Mensaje cifrado (haz clic para copiar)</label>
+          <div id="ctOut" class="output-box empty" onclick="copyOutput('ctOut')">
             El mensaje cifrado aparecerá aquí...
           </div>
         </div>
@@ -353,561 +355,513 @@
           <div class="card-title">📬 Recibir Mensaje</div>
           
           <label>Pega el mensaje cifrado que recibiste</label>
-          <textarea id="ciphertext" placeholder="Pega el mensaje cifrado aquí..."></textarea>
+          <textarea id="ctIn" placeholder="Pega el mensaje cifrado aquí..."></textarea>
           
-          <button onclick="decryptMessage()">🔓 Descifrar Mensaje</button>
+          <div class="button-group">
+            <button onclick="decryptText()">🔓 Descifrar</button>
+            <button class="ghost" onclick="clearCTin()">🗑️ Limpiar</button>
+          </div>
           
-          <label style="margin-top: 20px;">Mensaje descifrado</label>
-          <div id="plainOutput" class="output-box empty" onclick="copyText('plainOutput')">
+          <label style="margin-top: 20px;">Mensaje descifrado (haz clic para copiar)</label>
+          <div id="ptOut" class="output-box empty" onclick="copyOutput('ptOut')">
             El mensaje descifrado aparecerá aquí...
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">📎 Archivos</div>
+        <div class="card-title">📎 Cifrar/Descifrar Archivos</div>
         
         <label>Cifrar un archivo</label>
-        <input type="file" id="fileToEncrypt">
-        <button onclick="encryptFile()">🔒 Cifrar Archivo</button>
+        <input type="file" id="fileEnc">
+        <button onclick="encryptFile()">🔒 Cifrar y Descargar .enc</button>
         
         <div style="height: 20px;"></div>
         
         <label>Descifrar un archivo .enc</label>
-        <input type="file" id="fileToDecrypt" accept=".enc">
-        <button onclick="decryptFile()">🔓 Descifrar Archivo</button>
+        <input type="file" id="fileDec" accept=".enc">
+        <button onclick="decryptFile()">🔓 Descifrar y Descargar</button>
       </div>
     </div>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <div id="copyToast" class="toast">Copiado</div>
 
-    <script>
-      // ========================================
-      // Pure JavaScript X25519 Implementation
-      // ========================================
-      const P = 2n ** 255n - 19n;
+  <script>
+    // ========================================
+    // Pure JavaScript X25519 Implementation
+    // ========================================
+    const P = 2n ** 255n - 19n;
 
-      function modP(x) {
-        x = x % P;
-        return x < 0n ? x + P : x;
+    function modP(x) {
+      x = x % P;
+      return x < 0n ? x + P : x;
+    }
+
+    function modPow(base, exp, mod) {
+      let result = 1n;
+      base = base % mod;
+      while (exp > 0n) {
+        if (exp % 2n === 1n) result = (result * base) % mod;
+        exp = exp >> 1n;
+        base = (base * base) % mod;
       }
+      return result;
+    }
 
-      function modPow(base, exp, mod) {
-        let result = 1n;
-        base = base % mod;
-        while (exp > 0n) {
-          if (exp % 2n === 1n) result = (result * base) % mod;
-          exp = exp >> 1n;
-          base = (base * base) % mod;
-        }
-        return result;
+    function modInv(x, p) {
+      return modPow(x, p - 2n, p);
+    }
+
+    function bytesToBigInt(bytes) {
+      let result = 0n;
+      for (let i = 0; i < bytes.length; i++) {
+        result += BigInt(bytes[i]) << (8n * BigInt(i));
       }
+      return result;
+    }
 
-      function modInv(x, p) {
-        return modPow(x, p - 2n, p);
+    function bigIntToBytes(n) {
+      const bytes = new Uint8Array(32);
+      for (let i = 0; i < 32; i++) {
+        bytes[i] = Number((n >> (8n * BigInt(i))) & 0xffn);
       }
+      return bytes;
+    }
 
-      function bytesToBigInt(bytes) {
-        let result = 0n;
-        for (let i = 0; i < bytes.length; i++) {
-          result += BigInt(bytes[i]) << (8n * BigInt(i));
-        }
-        return result;
-      }
+    function clampPrivateKey(key) {
+      const k = new Uint8Array(key);
+      k[0] &= 248;
+      k[31] &= 127;
+      k[31] |= 64;
+      return k;
+    }
 
-      function bigIntToBytes(n) {
-        const bytes = new Uint8Array(32);
-        for (let i = 0; i < 32; i++) {
-          bytes[i] = Number((n >> (8n * BigInt(i))) & 0xffn);
-        }
-        return bytes;
-      }
+    function x25519(k, u) {
+      k = clampPrivateKey(k);
+      const kInt = bytesToBigInt(k);
+      const uInt = bytesToBigInt(u);
 
-      function clampPrivateKey(key) {
-        const k = new Uint8Array(key);
-        k[0] &= 248;
-        k[31] &= 127;
-        k[31] |= 64;
-        return k;
-      }
+      let x1 = uInt;
+      let x2 = 1n;
+      let z2 = 0n;
+      let x3 = uInt;
+      let z3 = 1n;
+      let swap = 0n;
 
-      function x25519(k, u) {
-        k = clampPrivateKey(k);
-        const kInt = bytesToBigInt(k);
-        const uInt = bytesToBigInt(u);
-
-        let x1 = uInt;
-        let x2 = 1n;
-        let z2 = 0n;
-        let x3 = uInt;
-        let z3 = 1n;
-        let swap = 0n;
-
-        for (let t = 254; t >= 0; t--) {
-          const kt = (kInt >> BigInt(t)) & 1n;
-          swap ^= kt;
-
-          if (swap) {
-            [x2, x3] = [x3, x2];
-            [z2, z3] = [z3, z2];
-          }
-          swap = kt;
-
-          const A = modP(x2 + z2);
-          const AA = modP(A * A);
-          const B = modP(x2 - z2);
-          const BB = modP(B * B);
-          const E = modP(AA - BB);
-          const C = modP(x3 + z3);
-          const D = modP(x3 - z3);
-          const DA = modP(D * A);
-          const CB = modP(C * B);
-
-          x3 = modP((DA + CB) * (DA + CB));
-          z3 = modP(x1 * (DA - CB) * (DA - CB));
-          x2 = modP(AA * BB);
-          z2 = modP(E * (AA + modP(121665n * E)));
-        }
+      for (let t = 254; t >= 0; t--) {
+        const kt = (kInt >> BigInt(t)) & 1n;
+        swap ^= kt;
 
         if (swap) {
           [x2, x3] = [x3, x2];
           [z2, z3] = [z3, z2];
         }
+        swap = kt;
 
-        const result = modP(x2 * modInv(z2, P));
-        return bigIntToBytes(result);
+        const A = modP(x2 + z2);
+        const AA = modP(A * A);
+        const B = modP(x2 - z2);
+        const BB = modP(B * B);
+        const E = modP(AA - BB);
+        const C = modP(x3 + z3);
+        const D = modP(x3 - z3);
+        const DA = modP(D * A);
+        const CB = modP(C * B);
+
+        x3 = modP((DA + CB) * (DA + CB));
+        z3 = modP(x1 * (DA - CB) * (DA - CB));
+        x2 = modP(AA * BB);
+        z2 = modP(E * (AA + modP(121665n * E)));
       }
 
-      function generateX25519PrivateKey() {
-        const key = new Uint8Array(32);
-        crypto.getRandomValues(key);
-        return key;
+      if (swap) {
+        [x2, x3] = [x3, x2];
+        [z2, z3] = [z3, z2];
       }
 
-      function computeX25519PublicKey(privateKey) {
-        const basePoint = new Uint8Array(32);
-        basePoint[0] = 9;
-        return x25519(privateKey, basePoint);
-      }
+      const result = modP(x2 * modInv(z2, P));
+      return bigIntToBytes(result);
+    }
 
-      function x25519SharedSecret(myPrivate, theirPublic) {
-        return x25519(myPrivate, theirPublic);
-      }
+    function generateX25519PrivateKey() {
+      const key = new Uint8Array(32);
+      crypto.getRandomValues(key);
+      return key;
+    }
 
-      // ========================================
-      // App State & Utilities
-      // ========================================
-      let myPrivateKey = null;
-      let myPublicKey = null;
-      let symKey = null;
+    function computeX25519PublicKey(privateKey) {
+      const basePoint = new Uint8Array(32);
+      basePoint[0] = 9;
+      return x25519(privateKey, basePoint);
+    }
 
-      const tv = (id) => document.getElementById(id);
-      const toast = tv("copyToast");
+    function x25519SharedSecret(myPrivate, theirPublic) {
+      return x25519(myPrivate, theirPublic);
+    }
 
-      function showToast(msg = "copied", ms = 1200) {
-        toast.textContent = msg;
-        toast.classList.add("show");
-        clearTimeout(toast._t);
-        toast._t = setTimeout(() => toast.classList.remove("show"), ms);
-      }
+    // ========================================
+    // App State & Utilities
+    // ========================================
+    let myPrivateKey = null;
+    let myPublicKey = null;
+    let symKey = null;
 
-      function b64urlEncode(u8) {
-        const s = btoa(String.fromCharCode(...u8));
-        return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-      }
+    const tv = (id) => document.getElementById(id);
+    const toast = tv("copyToast");
 
-      function b64urlDecode(s) {
-        s = s.replace(/-/g, "+").replace(/_/g, "/");
-        while (s.length % 4) s += "=";
-        const bin = atob(s);
-        const out = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-        return out;
-      }
+    function showToast(msg = "Copiado", ms = 1500) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => toast.classList.remove("show"), ms);
+    }
 
-      function uint16be(n) {
-        return new Uint8Array([(n >> 8) & 0xff, n & 0xff]);
-      }
-      function readUint16be(u8, off) {
-        return (u8[off] << 8) | u8[off + 1];
-      }
+    function b64urlEncode(u8) {
+      const s = btoa(String.fromCharCode(...u8));
+      return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
 
-      async function deriveSymmetricKeyFromShared(sharedSecret) {
-        const salt = new Uint8Array();
-        const info = new TextEncoder().encode("ecdh:aesgcm");
-        const hk = await crypto.subtle.importKey(
-          "raw",
-          sharedSecret,
-          "HKDF",
-          false,
-          ["deriveKey"]
-        );
-        const aesKey = await crypto.subtle.deriveKey(
-          { name: "HKDF", hash: "SHA-256", salt, info },
-          hk,
-          { name: "AES-GCM", length: 256 },
-          false,
-          ["encrypt", "decrypt"]
-        );
+    function b64urlDecode(s) {
+      s = s.replace(/-/g, "+").replace(/_/g, "/");
+      while (s.length % 4) s += "=";
+      const bin = atob(s);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+
+    function uint16be(n) {
+      return new Uint8Array([(n >> 8) & 0xff, n & 0xff]);
+    }
+
+    function readUint16be(u8, off) {
+      return (u8[off] << 8) | u8[off + 1];
+    }
+
+    async function deriveSymmetricKeyFromShared(sharedSecret) {
+      const salt = new Uint8Array();
+      const info = new TextEncoder().encode("ecdh:aesgcm");
+      const hk = await crypto.subtle.importKey(
+        "raw",
+        sharedSecret,
+        "HKDF",
+        false,
+        ["deriveKey"]
+      );
+      const aesKey = await crypto.subtle.deriveKey(
+        { name: "HKDF", hash: "SHA-256", salt, info },
+        hk,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+      );
+      try {
+        new Uint8Array(sharedSecret).fill(0);
+      } catch (e) {}
+      return aesKey;
+    }
+
+    async function generateEphemeral() {
+      tv("status").textContent = "Generando claves X25519...";
+      tv("statusDot").classList.remove("active");
+
+      myPrivateKey = generateX25519PrivateKey();
+      myPublicKey = computeX25519PublicKey(myPrivateKey);
+
+      const token = "pub1x" + b64urlEncode(myPublicKey);
+      tv("myToken").textContent = token;
+      tv("myToken").classList.remove("empty");
+      tv("status").textContent = "Token listo";
+
+      tv("peerState").textContent = "";
+      showOps(false);
+    }
+
+    function regenerateKey() {
+      symKey = null;
+      tv("peerToken").value = "";
+      generateEphemeral();
+      showToast("Nuevo token generado");
+    }
+
+    function parsePeerToken(token) {
+      if (!token || !token.startsWith("pub1x"))
+        throw new Error("Token inválido (debe empezar con pub1x)");
+      const rawB64 = token.slice(5);
+      const raw = b64urlDecode(rawB64);
+      if (raw.length !== 32)
+        throw new Error("Longitud de clave X25519 inválida");
+      return raw;
+    }
+
+    async function connectPeer() {
+      try {
+        const token = tv("peerToken").value.trim();
+        if (!token) {
+          tv("peerState").textContent = "❌ Campo vacío";
+          tv("peerState").style.color = "#e94560";
+          return;
+        }
+
+        let peerPublic;
         try {
-          new Uint8Array(sharedSecret).fill(0);
-        } catch (e) {}
-        return aesKey;
-      }
-
-      async function generateEphemeral() {
-        tv("status").textContent = "generating X25519 keypair";
-        tv("mobileStatus").textContent = "generating X25519 keypair";
-
-        myPrivateKey = generateX25519PrivateKey();
-        myPublicKey = computeX25519PublicKey(myPrivateKey);
-
-        const token = "pub1x" + b64urlEncode(myPublicKey);
-        tv("myToken").textContent = token;
-        tv("mobileMyToken").textContent = token;
-        tv("status").textContent = "ephemeral X25519 ready";
-        tv("mobileStatus").textContent = "ephemeral X25519 ready";
-
-        tv("peerState").textContent = "";
-        tv("mobilePeerState").textContent = "";
-        showOps(false);
-      }
-
-      function parsePeerToken(token) {
-        if (!token || !token.startsWith("pub1x"))
-          throw new Error("invalid token (must start with pub1x)");
-        const rawB64 = token.slice(5);
-        const raw = b64urlDecode(rawB64);
-        if (raw.length !== 32)
-          throw new Error("invalid X25519 public key length");
-        return raw;
-      }
-
-      async function acceptPeerLogic(tokenInput, stateEl, statusEl) {
-        try {
-          const token = tokenInput.value.trim();
-          if (!token) {
-            stateEl.textContent = "empty";
-            stateEl.className = "bad";
-            return;
-          }
-
-          let peerPublic;
-          try {
-            peerPublic = parsePeerToken(token);
-          } catch (e) {
-            stateEl.textContent = "invalid token";
-            stateEl.className = "bad";
-            return;
-          }
-
-          const sharedSecret = x25519SharedSecret(myPrivateKey, peerPublic);
-          symKey = await deriveSymmetricKeyFromShared(sharedSecret.buffer);
-
-          stateEl.textContent = "peer accepted (X25519)";
-          stateEl.className = "ok";
-          statusEl.textContent = "symmetric key derived";
-          showOps(true);
+          peerPublic = parsePeerToken(token);
         } catch (e) {
-          console.error("acceptPeer error", e);
-          stateEl.textContent = "error: " + (e.message || String(e));
-          stateEl.className = "bad";
-        }
-      }
-
-      function showOps(on) {
-        tv("ops").style.display = on ? "block" : "none";
-      }
-      function clearText() {
-        tv("ptIn").value = "";
-        tv("ctOut").textContent = "";
-      }
-      function clearCTin() {
-        tv("ctIn").value = "";
-        tv("ptOut").textContent = "";
-      }
-
-      async function encryptText() {
-        if (!symKey) {
-          alert("no symmetric key");
+          tv("peerState").textContent = "❌ Token inválido";
+          tv("peerState").style.color = "#e94560";
           return;
         }
-        const pt = new TextEncoder().encode(tv("ptIn").value);
-        if (pt.length === 0) {
-          alert("no plaintext");
+
+        const sharedSecret = x25519SharedSecret(myPrivateKey, peerPublic);
+        symKey = await deriveSymmetricKeyFromShared(sharedSecret.buffer);
+
+        tv("peerState").textContent = "✅ ¡Conectado! Clave compartida establecida";
+        tv("peerState").style.color = "#2ecc71";
+        tv("status").textContent = "Conectado - Clave simétrica derivada";
+        tv("statusDot").classList.add("active");
+        showOps(true);
+        showToast("¡Conexión establecida!");
+      } catch (e) {
+        console.error("Error al conectar:", e);
+        tv("peerState").textContent = "❌ Error: " + (e.message || String(e));
+        tv("peerState").style.color = "#e94560";
+      }
+    }
+
+    function showOps(on) {
+      tv("ops").style.display = on ? "block" : "none";
+    }
+
+    function clearText() {
+      tv("ptIn").value = "";
+      tv("ctOut").textContent = "El mensaje cifrado aparecerá aquí...";
+      tv("ctOut").classList.add("empty");
+    }
+
+    function clearCTin() {
+      tv("ctIn").value = "";
+      tv("ptOut").textContent = "El mensaje descifrado aparecerá aquí...";
+      tv("ptOut").classList.add("empty");
+    }
+
+    async function encryptText() {
+      if (!symKey) {
+        showToast("❌ No hay clave. Conecta primero con tu amigo", 2000);
+        return;
+      }
+      const pt = new TextEncoder().encode(tv("ptIn").value);
+      if (pt.length === 0) {
+        showToast("❌ Escribe un mensaje primero", 2000);
+        return;
+      }
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        symKey,
+        pt
+      );
+      const payload = new Uint8Array(iv.length + ct.byteLength);
+      payload.set(iv, 0);
+      payload.set(new Uint8Array(ct), iv.length);
+      const txt = b64urlEncode(payload);
+      tv("ctOut").textContent = txt;
+      tv("ctOut").classList.remove("empty");
+      showToast("✅ Mensaje cifrado. Haz clic para copiar");
+      try {
+        pt.fill(0);
+      } catch (e) {}
+    }
+
+    async function decryptText() {
+      if (!symKey) {
+        showToast("❌ No hay clave. Conecta primero", 2000);
+        return;
+      }
+      const s = tv("ctIn").value.trim();
+      if (!s) {
+        showToast("❌ Pega un mensaje cifrado primero", 2000);
+        return;
+      }
+      try {
+        const payload = b64urlDecode(s);
+        if (payload.length < 12 + 16) {
+          tv("ptOut").textContent = "❌ Mensaje muy corto o corrupto";
+          tv("ptOut").classList.remove("empty");
           return;
         }
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const ct = await crypto.subtle.encrypt(
+        const iv = payload.slice(0, 12);
+        const ct = payload.slice(12);
+        const ptbuf = await crypto.subtle.decrypt(
           { name: "AES-GCM", iv },
           symKey,
-          pt
+          ct
         );
-        const payload = new Uint8Array(iv.length + ct.byteLength);
-        payload.set(iv, 0);
-        payload.set(new Uint8Array(ct), iv.length);
-        const txt = b64urlEncode(payload);
-        tv("ctOut").textContent = txt;
+        const pt = new TextDecoder().decode(ptbuf);
+        tv("ptOut").textContent = pt;
+        tv("ptOut").classList.remove("empty");
+        showToast("✅ Mensaje descifrado");
         try {
-          pt.fill(0);
+          new Uint8Array(ptbuf).fill(0);
         } catch (e) {}
+      } catch (e) {
+        console.error(e);
+        tv("ptOut").textContent = "❌ Error al descifrar. ¿Token correcto?";
+        tv("ptOut").classList.remove("empty");
+        showToast("❌ Descifrado falló", 2000);
       }
+    }
 
-      async function decryptText() {
-        if (!symKey) {
-          alert("no key");
-          return;
-        }
-        const s = tv("ctIn").value.trim();
-        if (!s) {
-          alert("no payload");
-          return;
-        }
-        try {
-          const payload = b64urlDecode(s);
-          if (payload.length < 12 + 16) {
-            tv("ptOut").textContent = "payload too small";
-            return;
-          }
-          const iv = payload.slice(0, 12);
-          const ct = payload.slice(12);
-          const ptbuf = await crypto.subtle.decrypt(
-            { name: "AES-GCM", iv },
-            symKey,
-            ct
-          );
-          const pt = new TextDecoder().decode(ptbuf);
-          tv("ptOut").textContent = pt;
-          try {
-            new Uint8Array(ptbuf).fill(0);
-          } catch (e) {}
-        } catch (e) {
-          console.error(e);
-          tv("ptOut").textContent = "*** decrypt/auth failed ***";
-        }
+    async function encryptFile() {
+      if (!symKey) {
+        showToast("❌ No hay clave. Conecta primero", 2000);
+        return;
       }
+      const fi = tv("fileEnc").files[0];
+      if (!fi) {
+        showToast("❌ Selecciona un archivo primero", 2000);
+        return;
+      }
+      const arr = new Uint8Array(await fi.arrayBuffer());
+      const fname = new TextEncoder().encode(fi.name);
+      if (fname.length > 0xffff) {
+        showToast("❌ Nombre de archivo muy largo", 2000);
+        return;
+      }
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv, additionalData: fname },
+        symKey,
+        arr
+      );
+      const header = new Uint8Array(
+        2 + fname.length + iv.length + ct.byteLength
+      );
+      header.set(uint16be(fname.length), 0);
+      header.set(fname, 2);
+      header.set(iv, 2 + fname.length);
+      header.set(new Uint8Array(ct), 2 + fname.length + iv.length);
+      const blob = new Blob([header], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fi.name + ".enc";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast("✅ Archivo cifrado y descargado");
+      try {
+        arr.fill(0);
+      } catch (e) {}
+    }
 
-      async function encryptFile() {
-        if (!symKey) {
-          alert("no key");
-          return;
-        }
-        const fi = tv("fileEnc").files[0];
-        if (!fi) {
-          alert("pick a file");
-          return;
-        }
-        const arr = new Uint8Array(await fi.arrayBuffer());
-        const fname = new TextEncoder().encode(fi.name);
-        if (fname.length > 0xffff) {
-          alert("filename too long");
-          return;
-        }
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const ct = await crypto.subtle.encrypt(
+    async function decryptFile() {
+      if (!symKey) {
+        showToast("❌ No hay clave. Conecta primero", 2000);
+        return;
+      }
+      const fi = tv("fileDec").files[0];
+      if (!fi) {
+        showToast("❌ Selecciona un archivo .enc primero", 2000);
+        return;
+      }
+      const buf = new Uint8Array(await fi.arrayBuffer());
+      if (buf.length < 2 + 12 + 16) {
+        showToast("❌ Archivo muy pequeño o corrupto", 2000);
+        return;
+      }
+      const namelen = readUint16be(buf, 0);
+      if (buf.length < 2 + namelen + 12 + 16) {
+        showToast("❌ Archivo truncado", 2000);
+        return;
+      }
+      const fname = buf.slice(2, 2 + namelen);
+      const ivOff = 2 + namelen;
+      const iv = buf.slice(ivOff, ivOff + 12);
+      const ct = buf.slice(ivOff + 12);
+      try {
+        const ptbuf = await crypto.subtle.decrypt(
           { name: "AES-GCM", iv, additionalData: fname },
           symKey,
-          arr
+          ct
         );
-        const header = new Uint8Array(
-          2 + fname.length + iv.length + ct.byteLength
-        );
-        header.set(uint16be(fname.length), 0);
-        header.set(fname, 2);
-        header.set(iv, 2 + fname.length);
-        header.set(new Uint8Array(ct), 2 + fname.length + iv.length);
-        const blob = new Blob([header], { type: "application/octet-stream" });
+        const outName = new TextDecoder().decode(fname);
+        const blob = new Blob([ptbuf], { type: "application/octet-stream" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = fi.name + ".enc";
+        a.download = outName;
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
+        showToast("✅ Archivo descifrado y descargado");
         try {
-          arr.fill(0);
+          new Uint8Array(ptbuf).fill(0);
         } catch (e) {}
-      }
-
-      async function decryptFile() {
-        if (!symKey) {
-          alert("no key");
-          return;
-        }
-        const fi = tv("fileDec").files[0];
-        if (!fi) {
-          alert("pick a file");
-          return;
-        }
-        const buf = new Uint8Array(await fi.arrayBuffer());
-        if (buf.length < 2 + 12 + 16) {
-          alert("file too small");
-          return;
-        }
-        const namelen = readUint16be(buf, 0);
-        if (buf.length < 2 + namelen + 12 + 16) {
-          alert("file truncated");
-          return;
-        }
-        const fname = buf.slice(2, 2 + namelen);
-        const ivOff = 2 + namelen;
-        const iv = buf.slice(ivOff, ivOff + 12);
-        const ct = buf.slice(ivOff + 12);
-        try {
-          const ptbuf = await crypto.subtle.decrypt(
-            { name: "AES-GCM", iv, additionalData: fname },
-            symKey,
-            ct
-          );
-          const outName = new TextDecoder().decode(fname);
-          const blob = new Blob([ptbuf], { type: "application/octet-stream" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = outName;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-          try {
-            new Uint8Array(ptbuf).fill(0);
-          } catch (e) {}
-        } catch (e) {
-          console.error(e);
-          alert("decrypt/auth failed");
-        }
-      }
-
-      function downloadText(filename, text) {
-        const b = new Blob([text], { type: "text/plain" });
-        const url = URL.createObjectURL(b);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-
-      async function copyText(text) {
-        try {
-          await navigator.clipboard.writeText(text);
-          showToast("copied");
-        } catch (e) {
-          showToast("copy failed");
-        }
-      }
-
-      function bindPayloadCopy(elem) {
-        elem.addEventListener("click", () => {
-          const t = elem.textContent.trim();
-          if (t) copyText(t);
-        });
-        elem.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter" || ev.key === " ") {
-            ev.preventDefault();
-            const t = elem.textContent.trim();
-            if (t) copyText(t);
-          }
-        });
-      }
-
-      function setupMobileMenu() {
-        const menuToggle = tv("mobileMenuToggle");
-        const mobilePanel = tv("mobilePeerPanel");
-
-        menuToggle.classList.add("active");
-        mobilePanel.classList.add("active");
-
-        menuToggle.addEventListener("click", () => {
-          menuToggle.classList.toggle("active");
-          mobilePanel.classList.toggle("active");
-        });
-
-        mobilePanel.addEventListener("click", (e) => {
-          if (e.target === mobilePanel) {
-            menuToggle.classList.remove("active");
-            mobilePanel.classList.remove("active");
-          }
-        });
-      }
-
-      tv("regen").addEventListener("click", generateEphemeral);
-      tv("mobileRegen").addEventListener("click", generateEphemeral);
-
-      tv("copyMy").addEventListener("click", async () => {
-        const t = tv("myToken").textContent.trim();
-        if (t) copyText(t);
-      });
-      tv("mobileCopyMy").addEventListener("click", async () => {
-        const t = tv("mobileMyToken").textContent.trim();
-        if (t) copyText(t);
-      });
-
-      tv("downloadPub").addEventListener("click", () => {
-        if (tv("myToken").textContent)
-          downloadText("pub1.txt", tv("myToken").textContent);
-      });
-      tv("mobileDownloadPub").addEventListener("click", () => {
-        if (tv("mobileMyToken").textContent)
-          downloadText("pub1.txt", tv("mobileMyToken").textContent);
-      });
-
-      tv("acceptPeer").addEventListener("click", () => {
-        acceptPeerLogic(tv("peerToken"), tv("peerState"), tv("status"));
-      });
-      tv("mobileAcceptPeer").addEventListener("click", () => {
-        acceptPeerLogic(
-          tv("mobilePeerToken"),
-          tv("mobilePeerState"),
-          tv("mobileStatus")
-        );
-        tv("peerToken").value = tv("mobilePeerToken").value;
-      });
-
-      tv("encText").addEventListener("click", encryptText);
-      tv("clrText").addEventListener("click", clearText);
-      tv("decText").addEventListener("click", decryptText);
-      tv("clrCT").addEventListener("click", clearCTin);
-      tv("encFile").addEventListener("click", encryptFile);
-      tv("decFile").addEventListener("click", decryptFile);
-
-      tv("tokenShow").addEventListener("click", () => {
-        const box = tv("myToken");
-        if (box.style.display === "block") {
-          box.style.display = "none";
-          tv("tokenShow").textContent = "show token";
-        } else {
-          box.style.display = "block";
-          tv("tokenShow").textContent = "hide token";
-        }
-      });
-
-      window.addEventListener("DOMContentLoaded", () => {
-        bindPayloadCopy(tv("ctOut"));
-        bindPayloadCopy(tv("ptOut"));
-        bindPayloadCopy(tv("myToken"));
-        bindPayloadCopy(tv("mobileMyToken"));
-        setupMobileMenu();
-      });
-
-      generateEphemeral().catch((e) => {
+      } catch (e) {
         console.error(e);
-        tv("status").textContent = "init failed";
-        tv("mobileStatus").textContent = "init failed";
-      });
+        showToast("❌ Descifrado falló. ¿Token correcto?", 2500);
+      }
+    }
 
-      window.addEventListener("unload", () => {
-        try {
-          if (myPrivateKey) myPrivateKey.fill(0);
-          if (myPublicKey) myPublicKey.fill(0);
-          myPrivateKey = null;
-          myPublicKey = null;
-          symKey = null;
-        } catch (e) {}
-      });
-    </script>
-  </body>
+    function downloadText(filename, text) {
+      const b = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(b);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("📋 Copiado");
+      } catch (e) {
+        showToast("❌ Error al copiar");
+      }
+    }
+
+    function copyMyToken() {
+      const t = tv("myToken").textContent.trim();
+      if (t && !t.includes("Generando")) copyText(t);
+    }
+
+    function downloadPubToken() {
+      const t = tv("myToken").textContent.trim();
+      if (t && !t.includes("Generando")) {
+        downloadText("mi_token_publico.txt", t);
+        showToast("💾 Token descargado");
+      }
+    }
+
+    function copyOutput(elemId) {
+      const elem = tv(elemId);
+      if (!elem.classList.contains("empty")) {
+        const t = elem.textContent.trim();
+        if (t) copyText(t);
+      }
+    }
+
+    // Inicializar
+    generateEphemeral().catch((e) => {
+      console.error(e);
+      tv("status").textContent = "❌ Error al inicializar";
+    });
+
+    // Limpiar al cerrar
+    window.addEventListener("unload", () => {
+      try {
+        if (myPrivateKey) myPrivateKey.fill(0);
+        if (myPublicKey) myPublicKey.fill(0);
+        myPrivateKey = null;
+        myPublicKey = null;
+        symKey = null;
+      } catch (e) {}
+    });
+  </script>
+</body>
 </html>
-
