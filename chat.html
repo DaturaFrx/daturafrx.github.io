@@ -1,966 +1,1270 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chat Cifrado</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chat Cifrado</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      background: #1a1a2e;
-      color: #eee;
-      padding: 20px;
-      line-height: 1.6;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-
-    h1 {
-      text-align: center;
-      color: #4ecdc4;
-      margin-bottom: 10px;
-      font-size: 28px;
-    }
-
-    .subtitle {
-      text-align: center;
-      color: #95a5a6;
-      font-size: 14px;
-      margin-bottom: 30px;
-    }
-
-    .instructions {
-      background: #16213e;
-      border-left: 4px solid #4ecdc4;
-      padding: 20px;
-      margin-bottom: 30px;
-      border-radius: 8px;
-    }
-
-    .instructions h2 {
-      color: #4ecdc4;
-      font-size: 18px;
-      margin-bottom: 15px;
-    }
-
-    .instructions ol {
-      padding-left: 20px;
-    }
-
-    .instructions li {
-      margin-bottom: 10px;
-      color: #bbb;
-    }
-
-    .step {
-      background: #0f3460;
-      color: #4ecdc4;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-weight: bold;
-      margin-right: 5px;
-    }
-
-    .card {
-      background: #16213e;
-      border-radius: 12px;
-      padding: 25px;
-      margin-bottom: 20px;
-      border: 1px solid #2d3e50;
-    }
-
-    .card-title {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 15px;
-      color: #4ecdc4;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #95a5a6;
-    }
-
-    .status-dot.active {
-      background: #2ecc71;
-      box-shadow: 0 0 10px #2ecc71;
-    }
-
-    label {
-      display: block;
-      color: #95a5a6;
-      font-size: 13px;
-      margin-bottom: 8px;
-      font-weight: 500;
-    }
-
-    input[type="text"],
-    textarea {
-      width: 100%;
-      background: #0f3460;
-      border: 2px solid #2d3e50;
-      color: #eee;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: monospace;
-      transition: border-color 0.3s;
-    }
-
-    input[type="text"]:focus,
-    textarea:focus {
-      outline: none;
-      border-color: #4ecdc4;
-    }
-
-    textarea {
-      min-height: 100px;
-      resize: vertical;
-    }
-
-    button {
-      background: #4ecdc4;
-      color: #1a1a2e;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s;
-      width: 100%;
-      margin-top: 10px;
-    }
-
-    button:hover {
-      background: #45b7aa;
-      transform: translateY(-2px);
-    }
-
-    button:active {
-      transform: translateY(0);
-    }
-
-    button.secondary {
-      background: #e94560;
-    }
-
-    button.secondary:hover {
-      background: #d63447;
-    }
-
-    button.ghost {
-      background: transparent;
-      border: 2px dashed #2d3e50;
-      color: #95a5a6;
-    }
-
-    button.ghost:hover {
-      border-color: #4ecdc4;
-      color: #4ecdc4;
-      transform: none;
-    }
-
-    .button-group {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .button-group button {
-      margin-top: 0;
-    }
-
-    .output-box {
-      background: #0f3460;
-      border: 2px solid #2d3e50;
-      border-radius: 8px;
-      padding: 15px;
-      min-height: 80px;
-      font-family: monospace;
-      font-size: 13px;
-      word-break: break-all;
-      margin-top: 10px;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .output-box:hover {
-      border-color: #4ecdc4;
-      background: #16213e;
-    }
-
-    .output-box.empty {
-      color: #5a6c7d;
-      font-style: italic;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-
-    input[type="file"] {
-      width: 100%;
-      padding: 12px;
-      background: #0f3460;
-      border: 2px dashed #2d3e50;
-      border-radius: 8px;
-      color: #95a5a6;
-      cursor: pointer;
-    }
-
-    input[type="file"]::-webkit-file-upload-button {
-      display: none;
-    }
-
-    .toast {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #2ecc71;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 50px;
-      font-weight: bold;
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      z-index: 1000;
-    }
-
-    .toast.show {
-      opacity: 1;
-    }
-
-    .warning {
-      background: #f39c12;
-      color: #1a1a2e;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-size: 13px;
-    }
-
-    @media (max-width: 768px) {
       body {
-        padding: 15px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Arial, sans-serif;
+        background: #1a1a2e;
+        color: #eee;
+        padding: 20px;
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
       }
 
       h1 {
-        font-size: 24px;
+        text-align: center;
+        color: #4ecdc4;
+        margin-bottom: 10px;
+        font-size: 28px;
       }
 
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      .card {
-        padding: 20px;
+      .subtitle {
+        text-align: center;
+        color: #95a5a6;
+        font-size: 14px;
+        margin-bottom: 30px;
       }
 
       .instructions {
-        padding: 15px;
+        background: #16213e;
+        border-left: 4px solid #4ecdc4;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-radius: 8px;
+      }
+
+      .instructions h2 {
+        color: #4ecdc4;
+        font-size: 18px;
+        margin-bottom: 15px;
+      }
+
+      .instructions ol {
+        padding-left: 20px;
+      }
+
+      .instructions li {
+        margin-bottom: 10px;
+        color: #bbb;
+      }
+
+      .step {
+        background: #0f3460;
+        color: #4ecdc4;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        margin-right: 5px;
+      }
+
+      .card {
+        background: #16213e;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        border: 1px solid #2d3e50;
+      }
+
+      .card-title {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #4ecdc4;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #95a5a6;
+      }
+
+      .status-dot.active {
+        background: #2ecc71;
+        box-shadow: 0 0 10px #2ecc71;
+      }
+
+      label {
+        display: block;
+        color: #95a5a6;
+        font-size: 13px;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+
+      input[type="text"],
+      textarea {
+        width: 100%;
+        background: #0f3460;
+        border: 2px solid #2d3e50;
+        color: #eee;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: monospace;
+        transition: border-color 0.3s;
+      }
+
+      input[type="text"]:focus,
+      textarea:focus {
+        outline: none;
+        border-color: #4ecdc4;
+      }
+
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+
+      button {
+        background: #4ecdc4;
+        color: #1a1a2e;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+        width: 100%;
+        margin-top: 10px;
+      }
+
+      button:hover {
+        background: #45b7aa;
+        transform: translateY(-2px);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button.secondary {
+        background: #e94560;
+      }
+
+      button.secondary:hover {
+        background: #d63447;
+      }
+
+      button.ghost {
+        background: transparent;
+        border: 2px dashed #2d3e50;
+        color: #95a5a6;
+      }
+
+      button.ghost:hover {
+        border-color: #4ecdc4;
+        color: #4ecdc4;
+        transform: none;
       }
 
       .button-group {
-        flex-direction: column;
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
       }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>🔒 Chat Cifrado</h1>
-    <div class="subtitle">X25519 · HKDF-SHA256 · AES-GCM</div>
 
-    <div class="instructions">
-      <h2>📖 ¿Cómo usar?</h2>
-      <ol>
-        <li><span class="step">1</span>Comparte tu <strong>Token Público</strong> con la persona con quien quieres chatear</li>
-        <li><span class="step">2</span>Pídele su token público y pégalo en el campo <strong>"Token de tu amigo"</strong></li>
-        <li><span class="step">3</span>Haz clic en <strong>"Conectar"</strong> - cuando veas el punto verde, ¡están listos!</li>
-        <li><span class="step">4</span>Escribe tu mensaje, haz clic en <strong>"Cifrar"</strong> y envía el texto cifrado por cualquier medio</li>
-        <li><span class="step">5</span>Tu amigo pega el texto cifrado y hace clic en <strong>"Descifrar"</strong> para leerlo</li>
-      </ol>
-    </div>
+      .button-group button {
+        margin-top: 0;
+      }
 
-    <div class="card">
-      <div class="card-title">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="status">Inicializando...</span>
+      .output-box {
+        background: #0f3460;
+        border: 2px solid #2d3e50;
+        border-radius: 8px;
+        padding: 15px;
+        min-height: 80px;
+        font-family: monospace;
+        font-size: 13px;
+        word-break: break-all;
+        margin-top: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .output-box:hover {
+        border-color: #4ecdc4;
+        background: #16213e;
+      }
+
+      .output-box.empty {
+        color: #5a6c7d;
+        font-style: italic;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      input[type="file"] {
+        width: 100%;
+        padding: 12px;
+        background: #0f3460;
+        border: 2px dashed #2d3e50;
+        border-radius: 8px;
+        color: #95a5a6;
+        cursor: pointer;
+      }
+
+      input[type="file"]::-webkit-file-upload-button {
+        display: none;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #2ecc71;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 50px;
+        font-weight: bold;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+      }
+
+      .toast.show {
+        opacity: 1;
+      }
+
+      .warning {
+        background: #f39c12;
+        color: #1a1a2e;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 13px;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          padding: 15px;
+        }
+
+        h1 {
+          font-size: 24px;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .card {
+          padding: 20px;
+        }
+
+        .instructions {
+          padding: 15px;
+        }
+
+        .button-group {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔒 Chat Cifrado</h1>
+      <div class="subtitle">X25519 · HKDF-SHA256 · AES-GCM</div>
+
+      <div class="instructions">
+        <h2>📖 ¿Cómo usar?</h2>
+        <ol>
+          <li>
+            <span class="step">1</span>Comparte tu
+            <strong>Token Público</strong> con la persona con quien quieres
+            chatear
+          </li>
+          <li>
+            <span class="step">2</span>Pídele su token público y pégalo en el
+            campo <strong>"Token de tu amigo"</strong>
+          </li>
+          <li>
+            <span class="step">3</span>Haz clic en <strong>"Conectar"</strong> -
+            cuando veas el punto verde, ¡están listos!
+          </li>
+          <li>
+            <span class="step">4</span>Escribe tu mensaje, haz clic en
+            <strong>"Cifrar"</strong> y envía el texto cifrado por cualquier
+            medio
+          </li>
+          <li>
+            <span class="step">5</span>Tu amigo pega el texto cifrado y hace
+            clic en <strong>"Descifrar"</strong> para leerlo
+          </li>
+        </ol>
       </div>
-      
-      <label>🔑 Tu Token Público (compártelo con tu amigo)</label>
-      <div class="output-box" id="myToken" onclick="copyMyToken()" style="cursor: pointer;">
-        Generando token...
-      </div>
-      <div class="button-group">
-        <button onclick="copyMyToken()">📋 Copiar Token</button>
-        <button class="secondary" onclick="regenerateKey()">🔄 Nuevo Token</button>
-        <button class="ghost" onclick="downloadPubToken()">💾 Descargar .txt</button>
-      </div>
-    </div>
 
-    <div class="card">
-      <div class="card-title">🤝 Conectar con tu amigo</div>
-      
-      <label>Pega el token público de tu amigo aquí (pub1x...)</label>
-      <input type="text" id="peerToken" placeholder="pub1x...">
-      <button onclick="connectPeer()">✅ Conectar</button>
-      <div id="peerState" style="color: #95a5a6; font-size: 13px; margin-top: 10px; text-align: center;"></div>
-    </div>
-
-    <div id="ops" style="display: none;">
-      <div class="warning">
-        ⚠️ <strong>Importante:</strong> Nunca envíes tu token público y un mensaje cifrado en el mismo lugar. Envía tu token por un canal (ej: WhatsApp) y los mensajes cifrados por otro (ej: Email).
-      </div>
-
-      <div class="grid">
-        <div class="card">
-          <div class="card-title">📝 Enviar Mensaje</div>
-          
-          <label>Escribe tu mensaje secreto</label>
-          <textarea id="ptIn" placeholder="Hola, este es mi mensaje secreto..."></textarea>
-          
-          <div class="button-group">
-            <button onclick="encryptText()">🔒 Cifrar</button>
-            <button class="ghost" onclick="clearText()">🗑️ Limpiar</button>
-          </div>
-          
-          <label style="margin-top: 20px;">Mensaje cifrado (haz clic para copiar)</label>
-          <div id="ctOut" class="output-box empty" onclick="copyOutput('ctOut')">
-            El mensaje cifrado aparecerá aquí...
-          </div>
+      <div class="card">
+        <div class="card-title">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="status">Inicializando...</span>
         </div>
 
-        <div class="card">
-          <div class="card-title">📬 Recibir Mensaje</div>
-          
-          <label>Pega el mensaje cifrado que recibiste</label>
-          <textarea id="ctIn" placeholder="Pega el mensaje cifrado aquí..."></textarea>
-          
-          <div class="button-group">
-            <button onclick="decryptText()">🔓 Descifrar</button>
-            <button class="ghost" onclick="clearCTin()">🗑️ Limpiar</button>
-          </div>
-          
-          <label style="margin-top: 20px;">Mensaje descifrado (haz clic para copiar)</label>
-          <div id="ptOut" class="output-box empty" onclick="copyOutput('ptOut')">
-            El mensaje descifrado aparecerá aquí...
-          </div>
+        <label>🔑 Tu Token Público (compártelo con tu amigo)</label>
+        <div
+          class="output-box"
+          id="myToken"
+          onclick="copyMyToken()"
+          style="cursor: pointer"
+        >
+          Generando token...
+        </div>
+        <div class="button-group">
+          <button onclick="copyMyToken()">📋 Copiar Token</button>
+          <button class="secondary" onclick="regenerateKey()">
+            🔄 Nuevo Token
+          </button>
+          <button class="ghost" onclick="downloadPubToken()">
+            💾 Descargar .txt
+          </button>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">📎 Cifrar/Descifrar Archivos</div>
-        
-        <label>Cifrar un archivo</label>
-        <input type="file" id="fileEnc">
-        <button onclick="encryptFile()">🔒 Cifrar y Descargar .enc</button>
-        
-        <div style="height: 20px;"></div>
-        
-        <label>Descifrar un archivo .enc</label>
-        <input type="file" id="fileDec" accept=".enc">
-        <button onclick="decryptFile()">🔓 Descifrar y Descargar</button>
+        <div class="card-title">🤝 Conectar con tu amigo</div>
+
+        <label>Pega el token público de tu amigo aquí (pub1x...)</label>
+        <input type="text" id="peerToken" placeholder="pub1x..." />
+        <button onclick="connectPeer()">✅ Conectar</button>
+        <div
+          id="peerState"
+          style="
+            color: #95a5a6;
+            font-size: 13px;
+            margin-top: 10px;
+            text-align: center;
+          "
+        ></div>
+      </div>
+
+      <div id="ops" style="display: none">
+        <div class="warning">
+          ⚠️ <strong>Importante:</strong> Nunca envíes tu token público y un
+          mensaje cifrado en el mismo lugar. Envía tu token por un canal (ej:
+          WhatsApp) y los mensajes cifrados por otro (ej: Email).
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <div class="card-title">📝 Enviar Mensaje</div>
+
+            <label>Escribe tu mensaje secreto</label>
+            <textarea
+              id="ptIn"
+              placeholder="Hola, este es mi mensaje secreto..."
+            ></textarea>
+
+            <div class="button-group">
+              <button onclick="encryptText()">🔒 Cifrar</button>
+              <button class="ghost" onclick="clearText()">🗑️ Limpiar</button>
+            </div>
+
+            <label style="margin-top: 20px"
+              >Mensaje cifrado (haz clic para copiar)</label
+            >
+            <div
+              id="ctOut"
+              class="output-box empty"
+              onclick="copyOutput('ctOut')"
+            >
+              El mensaje cifrado aparecerá aquí...
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">📬 Recibir Mensaje</div>
+
+            <label>Pega el mensaje cifrado que recibiste</label>
+            <textarea
+              id="ctIn"
+              placeholder="Pega el mensaje cifrado aquí..."
+            ></textarea>
+
+            <div class="button-group">
+              <button onclick="decryptText()">🔓 Descifrar</button>
+              <button class="ghost" onclick="clearCTin()">🗑️ Limpiar</button>
+            </div>
+
+            <label style="margin-top: 20px"
+              >Mensaje descifrado (haz clic para copiar)</label
+            >
+            <div
+              id="ptOut"
+              class="output-box empty"
+              onclick="copyOutput('ptOut')"
+            >
+              El mensaje descifrado aparecerá aquí...
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📎 Cifrar/Descifrar Archivos</div>
+
+          <label>Cifrar un archivo</label>
+          <input type="file" id="fileEnc" />
+          <button onclick="encryptFile()">🔒 Cifrar y Descargar .enc</button>
+
+          <div style="height: 20px"></div>
+
+          <label>Descifrar un archivo .enc</label>
+          <input type="file" id="fileDec" accept=".enc" />
+          <button onclick="decryptFile()">🔓 Descifrar y Descargar</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div id="copyToast" class="toast">Copiado</div>
+    <div id="copyToast" class="toast">Copiado</div>
 
-  <script>
-    // ========================================
-    // X25519 Implementation (Hardened)
-    // ========================================
-    const P = 2n ** 255n - 19n;
-    
-    function modP(x) {
-      x = x % P;
-      return x < 0n ? x + P : x;
-    }
-    
-    function modPow(base, exp, mod) {
-      let result = 1n;
-      base = base % mod;
-      while (exp > 0n) {
-        if (exp % 2n === 1n) result = (result * base) % mod;
-        exp = exp >> 1n;
-        base = (base * base) % mod;
+    <script>
+
+      /* ---------- Minimal DOM helpers ---------- */
+      function tv(id) {
+        return document.getElementById(id);
       }
-      return result;
-    }
-    
-    function modInv(x, p) {
-      return modPow(x, p - 2n, p);
-    }
-    
-    function bytesToBigInt(bytes) {
-      let result = 0n;
-      for (let i = 0; i < bytes.length; i++) {
-        result += BigInt(bytes[i]) << (8n * BigInt(i));
-      }
-      return result;
-    }
-    
-    function bigIntToBytes(n) {
-      const bytes = new Uint8Array(32);
-      for (let i = 0; i < 32; i++) {
-        bytes[i] = Number((n >> (8n * BigInt(i))) & 0xffn);
-      }
-      return bytes;
-    }
-    
-    function clampPrivateKey(key) {
-      const k = new Uint8Array(key);
-      k[0] &= 248;
-      k[31] &= 127;
-      k[31] |= 64;
-      return k;
-    }
-    
-    function x25519(k, u) {
-      k = clampPrivateKey(k);
-      const kInt = bytesToBigInt(k);
-      const uInt = bytesToBigInt(u);
-    
-      let x1 = uInt;
-      let x2 = 1n;
-      let z2 = 0n;
-      let x3 = uInt;
-      let z3 = 1n;
-      let swap = 0n;
-    
-      for (let t = 254; t >= 0; t--) {
-        const kt = (kInt >> BigInt(t)) & 1n;
-        swap ^= kt;
-    
-        if (swap) {
-          [x2, x3] = [x3, x2];
-          [z2, z3] = [z3, z2];
-        }
-        swap = kt;
-    
-        const A = modP(x2 + z2);
-        const AA = modP(A * A);
-        const B = modP(x2 - z2);
-        const BB = modP(B * B);
-        const E = modP(AA - BB);
-        const C = modP(x3 + z3);
-        const D = modP(x3 - z3);
-        const DA = modP(D * A);
-        const CB = modP(C * B);
-    
-        x3 = modP((DA + CB) * (DA + CB));
-        z3 = modP(x1 * (DA - CB) * (DA - CB));
-        x2 = modP(AA * BB);
-        z2 = modP(E * (AA + modP(121665n * E)));
-      }
-    
-      if (swap) {
-        [x2, x3] = [x3, x2];
-        [z2, z3] = [z3, z2];
-      }
-    
-      const result = modP(x2 * modInv(z2, P));
-      return bigIntToBytes(result);
-    }
-    
-    function generateX25519PrivateKey() {
-      const key = new Uint8Array(32);
-      crypto.getRandomValues(key);
-      return key;
-    }
-    
-    function computeX25519PublicKey(privateKey) {
-      const basePoint = new Uint8Array(32);
-      basePoint[0] = 9;
-      return x25519(privateKey, basePoint);
-    }
-    
-    function x25519SharedSecret(myPrivate, theirPublic) {
-      return x25519(myPrivate, theirPublic);
-    }
-    
-    // ========================================
-    // Constant-Time Comparison
-    // ========================================
-    function timingSafeEqual(a, b) {
-      if (a.length !== b.length) return false;
-      let result = 0;
-      for (let i = 0; i < a.length; i++) {
-        result |= a[i] ^ b[i];
-      }
-      return result === 0;
-    }
-    
-    // ========================================
-    // App State & Utilities
-    // ========================================
-    let myPrivateKey = null;
-    let myPublicKey = null;
-    let symKey = null;
-    let sessionNonceCounter = 0;
-    let usedNonces = new Set();
-    
-    const tv = (id) => document.getElementById(id);
-    const toast = tv("copyToast");
-    
-    function showToast(msg = "Copiado", ms = 1500) {
-      toast.textContent = msg;
-      toast.classList.add("show");
-      clearTimeout(toast._t);
-      toast._t = setTimeout(() => toast.classList.remove("show"), ms);
-    }
-    
-    function b64urlEncode(u8) {
-      const s = btoa(String.fromCharCode(...u8));
-      return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    }
-    
-    function b64urlDecode(s) {
-      s = s.replace(/-/g, "+").replace(/_/g, "/");
-      while (s.length % 4) s += "=";
-      const bin = atob(s);
-      const out = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-      return out;
-    }
-    
-    function uint16be(n) {
-      return new Uint8Array([(n >> 8) & 0xff, n & 0xff]);
-    }
-    
-    function readUint16be(u8, off) {
-      return (u8[off] << 8) | u8[off + 1];
-    }
-    
-    async function deriveSymmetricKeyFromShared(sharedSecret, myPub, theirPub) {
-      const combinedPubs = new Uint8Array(64);
-      combinedPubs.set(myPub, 0);
-      combinedPubs.set(theirPub, 32);
-      
-      const info = new TextEncoder().encode("x25519-aesgcm-hkdf-sha256-v1");
-      
-      const hk = await crypto.subtle.importKey(
-        "raw",
-        sharedSecret,
-        "HKDF",
-        false,
-        ["deriveKey"]
-      );
-      
-      const aesKey = await crypto.subtle.deriveKey(
-        { 
-          name: "HKDF", 
-          hash: "SHA-256", 
-          salt: combinedPubs,
-          info 
-        },
-        hk,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt", "decrypt"]
-      );
-      
-      try {
-        new Uint8Array(sharedSecret).fill(0);
-      } catch (e) {}
-      
-      return aesKey;
-    }
-    
-    async function generateEphemeral() {
-      tv("status").textContent = "Generando claves X25519...";
-      tv("statusDot").classList.remove("active");
-    
-      myPrivateKey = generateX25519PrivateKey();
-      myPublicKey = computeX25519PublicKey(myPrivateKey);
-    
-      const token = "pub1x" + b64urlEncode(myPublicKey);
-      tv("myToken").textContent = token;
-      tv("myToken").classList.remove("empty");
-      tv("status").textContent = "Token listo";
-    
-      tv("peerState").textContent = "";
-      showOps(false);
-      sessionNonceCounter = 0;
-      usedNonces.clear();
-    }
-    
-    function regenerateKey() {
-      symKey = null;
-      tv("peerToken").value = "";
-      sessionNonceCounter = 0;
-      usedNonces.clear();
-      generateEphemeral();
-      showToast("Nuevo token generado");
-    }
-    
-    function parsePeerToken(token) {
-      if (!token || !token.startsWith("pub1x"))
-        throw new Error("Token inválido (debe empezar con pub1x)");
-      const rawB64 = token.slice(5);
-      const raw = b64urlDecode(rawB64);
-      if (raw.length !== 32)
-        throw new Error("Longitud de clave X25519 inválida");
-      return raw;
-    }
-    
-    async function connectPeer() {
-      try {
-        const token = tv("peerToken").value.trim();
-        if (!token) {
-          tv("peerState").textContent = "❌ Campo vacío";
-          tv("peerState").style.color = "#e94560";
+
+      function showToast(msg = "Copiado", ms = 1500) {
+        const t = tv("copyToast");
+        if (!t) {
+          try {
+            console.log(msg);
+          } catch (e) {}
           return;
         }
-    
-        let peerPublic;
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(t._t);
+        t._t = setTimeout(() => t.classList.remove("show"), ms);
+      }
+
+      function showOps(on) {
+        const el = tv("ops");
+        if (!el) return;
+        el.style.display = on ? "block" : "none";
+      }
+
+      /* ---------- Binary helpers ---------- */
+      function uint16be(n) {
+        return new Uint8Array([(n >> 8) & 0xff, n & 0xff]);
+      }
+      function readUint16be(u8, off) {
+        return (u8[off] << 8) | u8[off + 1];
+      }
+
+      function b64urlEncode(u8) {
+        const s = btoa(String.fromCharCode(...u8));
+        return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      }
+      function b64urlDecode(s) {
+        s = s.replace(/-/g, "+").replace(/_/g, "/");
+        while (s.length % 4) s += "=";
+        const bin = atob(s);
+        const out = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+        return out;
+      }
+
+      /* ---------- Constant-time compare ---------- */
+      function timingSafeEqual(a, b) {
+        if (!(a instanceof Uint8Array) || !(b instanceof Uint8Array))
+          return false;
+        if (a.length !== b.length) return false;
+        let r = 0;
+        for (let i = 0; i < a.length; i++) r |= a[i] ^ b[i];
+        return r === 0;
+      }
+
+      /* ---------- X25519 core (RFC 7748, BigInt) ---------- */
+      const P = (1n << 255n) - 19n;
+
+      function modP(x) {
+        x %= P;
+        return x < 0n ? x + P : x;
+      }
+      function modPow(base, exp, mod) {
+        base %= mod;
+        let r = 1n;
+        while (exp > 0n) {
+          if (exp & 1n) r = (r * base) % mod;
+          base = (base * base) % mod;
+          exp >>= 1n;
+        }
+        return r;
+      }
+      function modInv(x, p) {
+        return modPow(modP(x), p - 2n, p);
+      }
+
+      function bytesToBigIntLE(bytes) {
+        let acc = 0n;
+        for (let i = bytes.length - 1; i >= 0; i--)
+          acc = (acc << 8n) | BigInt(bytes[i]);
+        return acc;
+      }
+
+      function bigIntTo32LE(n) {
+        const out = new Uint8Array(32);
+        let v = modP(n);
+        for (let i = 0; i < 32; i++) {
+          out[i] = Number(v & 0xffn);
+          v >>= 8n;
+        }
+        return out;
+      }
+
+      function cswap(a, b, swap) {
+        const mask = 0n - BigInt(swap);
+        const t = (a ^ b) & mask;
+        a = a ^ t;
+        b = b ^ t;
+        return [a, b];
+      }
+
+      function clampScalar(sk) {
+        const s = new Uint8Array(sk);
+        if (s.length !== 32) throw new Error("Scalar length must be 32");
+        s[0] &= 248;
+        s[31] &= 127;
+        s[31] |= 64;
+        return s;
+      }
+
+      function x25519_scalar_mult(kBytes, uBytes) {
+        if (kBytes.length !== 32 || uBytes.length !== 32)
+          throw new Error("Invalid input lengths for x25519");
+        const k = bytesToBigIntLE(kBytes);
+        const u = bytesToBigIntLE(uBytes);
+
+        let x1 = modP(u);
+        let x2 = 1n,
+          z2 = 0n,
+          x3 = x1,
+          z3 = 1n,
+          swap = 0n;
+        const A24 = (486662n - 2n) / 4n;
+
+        for (let t = 254; t >= 0; t--) {
+          const kt = (k >> BigInt(t)) & 1n;
+          const sel = kt ^ swap;
+          [x2, x3] = cswap(x2, x3, sel);
+          [z2, z3] = cswap(z2, z3, sel);
+          swap = kt;
+
+          const A = modP(x2 + z2);
+          const AA = modP(A * A);
+          const B = modP(x2 - z2);
+          const BB = modP(B * B);
+          const E = modP(AA - BB);
+          const C = modP(x3 + z3);
+          const D = modP(x3 - z3);
+          const DA = modP(D * A);
+          const CB = modP(C * B);
+
+          x3 = modP((DA + CB) * (DA + CB));
+          z3 = modP(x1 * modP((DA - CB) * (DA - CB)));
+          x2 = modP(AA * BB);
+          z2 = modP(E * (AA + modP(A24 * E)));
+        }
+
+        [x2, x3] = cswap(x2, x3, swap);
+        [z2, z3] = cswap(z2, z3, swap);
+
+        const z2Inv = modInv(z2, P);
+        const xOut = modP(x2 * z2Inv);
+        return bigIntTo32LE(xOut);
+      }
+
+      /* ---------- Keygen / pub / shared ---------- */
+      function generatePrivateKey() {
+        const sk = new Uint8Array(32);
+        crypto.getRandomValues(sk);
+        const clamped = clampScalar(sk);
         try {
-          peerPublic = parsePeerToken(token);
-        } catch (e) {
-          tv("peerState").textContent = "❌ Token inválido";
-          tv("peerState").style.color = "#e94560";
-          return;
-        }
-    
-        if (timingSafeEqual(myPublicKey, peerPublic)) {
-          tv("peerState").textContent = "❌ No puedes conectarte contigo mismo";
-          tv("peerState").style.color = "#e94560";
-          return;
-        }
-    
-        const sharedSecret = x25519SharedSecret(myPrivateKey, peerPublic);
-        
-        const allZeros = sharedSecret.every(b => b === 0);
-        if (allZeros) {
-          tv("peerState").textContent = "❌ Fallo criptográfico: secreto inválido";
-          tv("peerState").style.color = "#e94560";
-          return;
-        }
-    
-        symKey = await deriveSymmetricKeyFromShared(sharedSecret.buffer, myPublicKey, peerPublic);
-        sessionNonceCounter = 0;
-        usedNonces.clear();
-    
-        tv("peerState").textContent = "✅ ¡Conectado! Clave compartida establecida";
-        tv("peerState").style.color = "#2ecc71";
-        tv("status").textContent = "Conectado - Clave simétrica derivada";
-        tv("statusDot").classList.add("active");
-        showOps(true);
-        showToast("¡Conexión establecida!");
-      } catch (e) {
-        console.error("Error al conectar:", e);
-        tv("peerState").textContent = "❌ Error: " + (e.message || String(e));
-        tv("peerState").style.color = "#e94560";
-      }
-    }
-    
-    function showOps(on) {
-      tv("ops").style.display = on ? "block" : "none";
-    }
-    
-    function clearText() {
-      tv("ptIn").value = "";
-      tv("ctOut").textContent = "El mensaje cifrado aparecerá aquí...";
-      tv("ctOut").classList.add("empty");
-    }
-    
-    function clearCTin() {
-      tv("ctIn").value = "";
-      tv("ptOut").textContent = "El mensaje descifrado aparecerá aquí...";
-      tv("ptOut").classList.add("empty");
-    }
-    
-    function generateNonce() {
-      const nonce = new Uint8Array(12);
-      crypto.getRandomValues(nonce);
-      
-      sessionNonceCounter++;
-      const counterBytes = new Uint8Array(4);
-      new DataView(counterBytes.buffer).setUint32(0, sessionNonceCounter, false);
-      
-      for (let i = 0; i < 4; i++) {
-        nonce[8 + i] ^= counterBytes[i];
-      }
-      
-      const nonceKey = b64urlEncode(nonce);
-      if (usedNonces.has(nonceKey)) {
-        throw new Error("Nonce collision detected");
-      }
-      usedNonces.add(nonceKey);
-      
-      if (usedNonces.size > 10000) {
-        const arr = Array.from(usedNonces);
-        usedNonces = new Set(arr.slice(-5000));
-      }
-      
-      return nonce;
-    }
-    
-    async function encryptText() {
-      if (!symKey) {
-        showToast("❌ No hay clave. Conecta primero con tu amigo", 2000);
-        return;
-      }
-      const pt = new TextEncoder().encode(tv("ptIn").value);
-      if (pt.length === 0) {
-        showToast("❌ Escribe un mensaje primero", 2000);
-        return;
-      }
-      
-      const nonce = generateNonce();
-      
-      const ct = await crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: nonce, tagLength: 128 },
-        symKey,
-        pt
-      );
-      
-      const payload = new Uint8Array(nonce.length + ct.byteLength);
-      payload.set(nonce, 0);
-      payload.set(new Uint8Array(ct), nonce.length);
-      
-      const txt = b64urlEncode(payload);
-      tv("ctOut").textContent = txt;
-      tv("ctOut").classList.remove("empty");
-      showToast("✅ Mensaje cifrado. Haz clic para copiar");
-      
-      try {
-        pt.fill(0);
-      } catch (e) {}
-    }
-    
-    async function decryptText() {
-      if (!symKey) {
-        showToast("❌ No hay clave. Conecta primero", 2000);
-        return;
-      }
-      const s = tv("ctIn").value.trim();
-      if (!s) {
-        showToast("❌ Pega un mensaje cifrado primero", 2000);
-        return;
-      }
-      try {
-        const payload = b64urlDecode(s);
-        if (payload.length < 12 + 16) {
-          tv("ptOut").textContent = "❌ Mensaje muy corto o corrupto";
-          tv("ptOut").classList.remove("empty");
-          return;
-        }
-        
-        const nonce = payload.slice(0, 12);
-        const ct = payload.slice(12);
-        
-        const ptbuf = await crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: nonce, tagLength: 128 },
-          symKey,
-          ct
-        );
-        
-        const pt = new TextDecoder().decode(ptbuf);
-        tv("ptOut").textContent = pt;
-        tv("ptOut").classList.remove("empty");
-        showToast("✅ Mensaje descifrado");
-        
-        try {
-          new Uint8Array(ptbuf).fill(0);
+          sk.fill(0);
         } catch (e) {}
-      } catch (e) {
-        console.error(e);
-        tv("ptOut").textContent = "❌ Error al descifrar. ¿Token correcto?";
-        tv("ptOut").classList.remove("empty");
-        showToast("❌ Descifrado falló", 2000);
+        return clamped;
       }
-    }
-    
-    async function encryptFile() {
-      if (!symKey) {
-        showToast("❌ No hay clave. Conecta primero", 2000);
-        return;
+      function computePublicKey(privateKey) {
+        const base = new Uint8Array(32);
+        base[0] = 9;
+        return x25519_scalar_mult(privateKey, base);
       }
-      const fi = tv("fileEnc").files[0];
-      if (!fi) {
-        showToast("❌ Selecciona un archivo primero", 2000);
-        return;
+      function computeSharedSecret(myPrivate, theirPublic) {
+        return x25519_scalar_mult(myPrivate, theirPublic);
       }
-      
-      if (fi.size > 100 * 1024 * 1024) {
-        showToast("❌ Archivo muy grande (máx 100MB)", 2500);
-        return;
+
+      /* ---------- Lexicographic compare for deterministic ordering ---------- */
+      function cmpUint8(a, b) {
+        const la = a.length,
+          lb = b.length;
+        const L = Math.min(la, lb);
+        for (let i = 0; i < L; i++) {
+          if (a[i] < b[i]) return -1;
+          if (a[i] > b[i]) return 1;
+        }
+        if (la < lb) return -1;
+        if (la > lb) return 1;
+        return 0;
       }
-      
-      const arr = new Uint8Array(await fi.arrayBuffer());
-      const fname = new TextEncoder().encode(fi.name);
-      
-      if (fname.length > 0xffff) {
-        showToast("❌ Nombre de archivo muy largo", 2000);
-        return;
-      }
-      
-      const nonce = generateNonce();
-      
-      const ct = await crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: nonce, additionalData: fname, tagLength: 128 },
-        symKey,
-        arr
-      );
-      
-      const header = new Uint8Array(2 + fname.length + nonce.length + ct.byteLength);
-      header.set(uint16be(fname.length), 0);
-      header.set(fname, 2);
-      header.set(nonce, 2 + fname.length);
-      header.set(new Uint8Array(ct), 2 + fname.length + nonce.length);
-      
-      const blob = new Blob([header], { type: "application/octet-stream" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fi.name + ".enc";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      
-      showToast("✅ Archivo cifrado y descargado");
-      try {
-        arr.fill(0);
-      } catch (e) {}
-    }
-    
-    async function decryptFile() {
-      if (!symKey) {
-        showToast("❌ No hay clave. Conecta primero", 2000);
-        return;
-      }
-      const fi = tv("fileDec").files[0];
-      if (!fi) {
-        showToast("❌ Selecciona un archivo .enc primero", 2000);
-        return;
-      }
-      
-      const buf = new Uint8Array(await fi.arrayBuffer());
-      if (buf.length < 2 + 12 + 16) {
-        showToast("❌ Archivo muy pequeño o corrupto", 2000);
-        return;
-      }
-      
-      const namelen = readUint16be(buf, 0);
-      if (buf.length < 2 + namelen + 12 + 16) {
-        showToast("❌ Archivo truncado", 2000);
-        return;
-      }
-      
-      const fname = buf.slice(2, 2 + namelen);
-      const nonceOff = 2 + namelen;
-      const nonce = buf.slice(nonceOff, nonceOff + 12);
-      const ct = buf.slice(nonceOff + 12);
-      
-      try {
-        const ptbuf = await crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: nonce, additionalData: fname, tagLength: 128 },
-          symKey,
-          ct
+
+      /* ---------- HMAC-SHA256 / HKDF (SubtleCrypto) ---------- */
+      async function hmacSha256(keyBytes, data) {
+        const key = await crypto.subtle.importKey(
+          "raw",
+          keyBytes,
+          { name: "HMAC", hash: "SHA-256" },
+          false,
+          ["sign"]
         );
-        
-        const outName = new TextDecoder().decode(fname);
-        const blob = new Blob([ptbuf], { type: "application/octet-stream" });
+        const sig = await crypto.subtle.sign("HMAC", key, data);
+        return new Uint8Array(sig);
+      }
+
+      async function hkdfExtract(salt, ikm) {
+        const hashLen = 32;
+        let usedSalt;
+        if (!salt || salt.length === 0) usedSalt = new Uint8Array(hashLen);
+        else if (salt.length < hashLen) {
+          usedSalt = new Uint8Array(hashLen);
+          usedSalt.set(salt, 0);
+        } else usedSalt = salt;
+        const prk = await hmacSha256(usedSalt, ikm);
+        try {
+          if (usedSalt !== salt) usedSalt.fill(0);
+        } catch (e) {}
+        return prk;
+      }
+
+      async function hkdfExpand(prk, info, length) {
+        const hashLen = 32;
+        const n = Math.ceil(length / hashLen);
+        if (n > 255) throw new Error("HKDF expand too large");
+        let t = new Uint8Array(0);
+        let okm = new Uint8Array(0);
+        for (let i = 1; i <= n; i++) {
+          const input = new Uint8Array(t.length + info.length + 1);
+          input.set(t, 0);
+          input.set(info, t.length);
+          input[input.length - 1] = i;
+          const sig = await hmacSha256(prk, input);
+          t = sig;
+          const newOkm = new Uint8Array(okm.length + t.length);
+          newOkm.set(okm, 0);
+          newOkm.set(t, okm.length);
+          okm = newOkm;
+        }
+        return okm.slice(0, length);
+      }
+
+      async function hkdf(salt, ikm, info, length) {
+        const prk = await hkdfExtract(salt, ikm);
+        const okm = await hkdfExpand(prk, info, length);
+        try {
+          prk.fill(0);
+        } catch (e) {}
+        return okm;
+      }
+
+      /* ---------- Deterministic session derivation + confirmation ---------- */
+      async function deriveSessionKeys(sharedSecret, pubA, pubB) {
+        const [pk1, pk2] =
+          cmpUint8(pubA, pubB) <= 0 ? [pubA, pubB] : [pubB, pubA];
+        const proto = new TextEncoder().encode("x25519-enc-v1");
+        const info = new Uint8Array(proto.length + 64);
+        info.set(proto, 0);
+        info.set(pk1, proto.length);
+        info.set(pk2, proto.length + 32);
+
+        // derive 68 bytes: aes(32) | confirm(32) | sessionSalt(4)
+        const okm = await hkdf(new Uint8Array(0), sharedSecret, info, 68);
+        const aesKeyBytes = okm.slice(0, 32);
+        const confirmKey = okm.slice(32, 64);
+        const sessionSalt = okm.slice(64, 68);
+
+        const aesKey = await crypto.subtle.importKey(
+          "raw",
+          aesKeyBytes,
+          { name: "AES-GCM" },
+          false,
+          ["encrypt", "decrypt"]
+        );
+
+        try {
+          okm.fill(0);
+          aesKeyBytes.fill(0);
+        } catch (e) {}
+        return { aesKey, confirmKey, sessionSalt };
+      }
+
+      async function computeKeyConfirmation(
+        confirmKey,
+        pubA,
+        pubB,
+        sessionSalt
+      ) {
+        const [pk1, pk2] =
+          cmpUint8(pubA, pubB) <= 0 ? [pubA, pubB] : [pubB, pubA];
+        const msg = new Uint8Array(4 + 64);
+        msg.set(sessionSalt, 0);
+        msg.set(pk1, 4);
+        msg.set(pk2, 36);
+        return await hmacSha256(confirmKey, msg);
+      }
+
+      /* ---------- AES-GCM session wrapper ---------- */
+      class AesGcmSession {
+        constructor(aesCryptoKey, sessionSalt) {
+          this.key = aesCryptoKey;
+          this.sessionSalt = new Uint8Array(sessionSalt);
+          this.counter = 0n;
+          this.usedNonces = new Set();
+        }
+
+        _nextNonce() {
+          if (this.counter >= (1n << 64n) - 1n)
+            throw new Error("Nonce counter exhausted");
+          const ctr = this.counter;
+          this.counter += 1n;
+          const ctrBytes = new Uint8Array(8);
+          let tmp = ctr;
+          for (let i = 7; i >= 0; i--) {
+            ctrBytes[i] = Number(tmp & 0xffn);
+            tmp >>= 8n;
+          }
+          const nonce = new Uint8Array(12);
+          nonce.set(this.sessionSalt, 0);
+          nonce.set(ctrBytes, 4);
+          const key = b64urlEncode(nonce);
+          if (this.usedNonces.has(key)) throw new Error("Nonce reuse detected");
+          this.usedNonces.add(key);
+          if (this.usedNonces.size > 5000) {
+            const arr = Array.from(this.usedNonces);
+            this.usedNonces = new Set(arr.slice(-2500));
+          }
+          return nonce;
+        }
+
+        async encrypt(plaintext, aad = new Uint8Array(0)) {
+          const iv = this._nextNonce();
+          const ct = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv, additionalData: aad, tagLength: 128 },
+            this.key,
+            plaintext
+          );
+          return { iv: new Uint8Array(iv), ct: new Uint8Array(ct) };
+        }
+
+        async decrypt(iv, ciphertext, aad = new Uint8Array(0)) {
+          const pt = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv, additionalData: aad, tagLength: 128 },
+            this.key,
+            ciphertext
+          );
+          return new Uint8Array(pt);
+        }
+
+        zeroize() {
+          try {
+            this.sessionSalt.fill(0);
+          } catch (e) {}
+          this.counter = 0n;
+          this.key = null;
+          this.usedNonces.clear();
+        }
+      }
+
+      /* ---------- High-level handshake API ---------- */
+      async function createEphemeralKeypair() {
+        const sk = generatePrivateKey();
+        const pk = computePublicKey(sk);
+        return { sk, pk };
+      }
+
+      async function establishSession(mySk, myPk, theirPk) {
+        if (!(mySk instanceof Uint8Array) || mySk.length !== 32)
+          throw new Error("Invalid mySk");
+        if (!(myPk instanceof Uint8Array) || myPk.length !== 32)
+          throw new Error("Invalid myPk");
+        if (!(theirPk instanceof Uint8Array) || theirPk.length !== 32)
+          throw new Error("Invalid theirPk");
+
+        const shared = computeSharedSecret(mySk, theirPk);
+
+        let allZero = true;
+        for (let i = 0; i < shared.length; i++)
+          if (shared[i] !== 0) {
+            allZero = false;
+            break;
+          }
+        if (allZero) {
+          try {
+            shared.fill(0);
+          } catch (e) {}
+          throw new Error("Derived shared secret is all zero");
+        }
+
+        const { aesKey, confirmKey, sessionSalt } = await deriveSessionKeys(
+          shared,
+          myPk,
+          theirPk
+        );
+        const confirmTag = await computeKeyConfirmation(
+          confirmKey,
+          myPk,
+          theirPk,
+          sessionSalt
+        );
+
+        try {
+          shared.fill(0);
+        } catch (e) {}
+        const session = new AesGcmSession(aesKey, sessionSalt);
+        return { session, confirmTag, sessionSalt };
+      }
+
+      /* ---------- Token helpers ---------- */
+      function makePubToken(pub) {
+        return "pub1x" + b64urlEncode(pub);
+      }
+      function parsePubToken(token) {
+        if (!token || typeof token !== "string")
+          throw new Error("Token not string");
+        if (!token.startsWith("pub1x"))
+          throw new Error("Token must start with 'pub1x'");
+        const raw = token.slice(5);
+        const buf = b64urlDecode(raw);
+        if (buf.length !== 32) throw new Error("Invalid public key length");
+        return buf;
+      }
+
+      /* ---------- Global UI state ---------- */
+      let myPrivateKey = null;
+      let myPublicKey = null;
+      let symSession = null;
+
+      /* ---------- UI functions required by your HTML ---------- */
+
+      async function generateEphemeral() {
+        try {
+          const kp = await createEphemeralKeypair();
+          myPrivateKey = kp.sk;
+          myPublicKey = kp.pk;
+
+          const token = makePubToken(myPublicKey);
+          const el = tv("myToken");
+          if (el) {
+            el.textContent = token;
+            el.classList.remove("empty");
+          }
+          const st = tv("status");
+          if (st) st.textContent = "Token listo";
+          const sd = tv("statusDot");
+          if (sd) {
+            sd.classList.remove("active");
+            sd.classList.add("active");
+          }
+
+          symSession = null;
+          showOps(false);
+          const peerState = tv("peerState");
+          if (peerState) {
+            peerState.textContent = "";
+            peerState.style.color = "";
+          }
+          return kp;
+        } catch (e) {
+          console.error("generateEphemeral:", e);
+          const st = tv("status");
+          if (st) st.textContent = "❌ Error generando token";
+          throw e;
+        }
+      }
+
+      async function regenerateKey() {
+        try {
+          if (myPrivateKey) myPrivateKey.fill(0);
+        } catch (e) {}
+        myPrivateKey = null;
+        myPublicKey = null;
+        symSession = null;
+        await generateEphemeral();
+        showToast("Nuevo token generado");
+      }
+
+      async function copyText(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast("Copiado");
+          return true;
+        } catch (e) {
+          showToast("Error al copiar");
+          return false;
+        }
+      }
+
+      async function copyMyToken() {
+        const el = tv("myToken");
+        if (!el) {
+          showToast("Token no disponible");
+          return;
+        }
+        const t = el.textContent.trim();
+        if (!t || t.includes("Generando")) {
+          showToast("Token no listo");
+          return;
+        }
+        await copyText(t);
+      }
+
+      function downloadPubToken() {
+        const el = tv("myToken");
+        if (!el) return;
+        const t = el.textContent.trim();
+        if (!t || t.includes("Generando")) return;
+        const blob = new Blob([t], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = outName;
+        a.download = "mi_token_publico.txt";
         document.body.appendChild(a);
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        
-        showToast("✅ Archivo descifrado y descargado");
-        try {
-          new Uint8Array(ptbuf).fill(0);
-        } catch (e) {}
-      } catch (e) {
-        console.error(e);
-        showToast("❌ Descifrado falló. ¿Token correcto?", 2500);
+        showToast("Token descargado");
       }
-    }
-    
-    function downloadText(filename, text) {
-      const b = new Blob([text], { type: "text/plain" });
-      const url = URL.createObjectURL(b);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-    
-    async function copyText(text) {
-      try {
-        await navigator.clipboard.writeText(text);
-        showToast("📋 Copiado");
-      } catch (e) {
-        showToast("❌ Error al copiar");
-      }
-    }
-    
-    function copyMyToken() {
-      const t = tv("myToken").textContent.trim();
-      if (t && !t.includes("Generando")) copyText(t);
-    }
-    
-    function downloadPubToken() {
-      const t = tv("myToken").textContent.trim();
-      if (t && !t.includes("Generando")) {
-        downloadText("mi_token_publico.txt", t);
-        showToast("💾 Token descargado");
-      }
-    }
-    
-    function copyOutput(elemId) {
-      const elem = tv(elemId);
-      if (!elem.classList.contains("empty")) {
-        const t = elem.textContent.trim();
-        if (t) copyText(t);
-      }
-    }
-    
-    // Initialize
-    generateEphemeral().catch((e) => {
-      console.error(e);
-      tv("status").textContent = "❌ Error al inicializar";
-    });
-    
-    // Cleanup on unload
-    window.addEventListener("unload", () => {
-      try {
-        if (myPrivateKey) myPrivateKey.fill(0);
-        if (myPublicKey) myPublicKey.fill(0);
-        myPrivateKey = null;
-        myPublicKey = null;
-        symKey = null;
-        usedNonces.clear();
-      } catch (e) {}
-    });
-  </script>
-</body>
-</html>
 
+      async function connectPeer() {
+        try {
+          if (!myPrivateKey || !myPublicKey) {
+            showToast("Genera una clave primero", 1400);
+            return;
+          }
+          const token = (tv("peerToken") || {}).value;
+          if (!token) {
+            tv("peerState").textContent = "❌ Campo vacío";
+            tv("peerState").style.color = "#e94560";
+            return;
+          }
+
+          let peerPub;
+          try {
+            peerPub = parsePubToken(token);
+          } catch (e) {
+            tv("peerState").textContent = "❌ Token inválido";
+            tv("peerState").style.color = "#e94560";
+            return;
+          }
+
+          if (timingSafeEqual(myPublicKey, peerPub)) {
+            tv("peerState").textContent =
+              "❌ No puedes conectarte contigo mismo";
+            tv("peerState").style.color = "#e94560";
+            return;
+          }
+
+          const { session, confirmTag } = await establishSession(
+            myPrivateKey,
+            myPublicKey,
+            peerPub
+          );
+          symSession = session;
+          tv("peerState").textContent =
+            "✅ Conectado - Clave compartida establecida";
+          tv("peerState").style.color = "#2ecc71";
+          const st = tv("status");
+          if (st) st.textContent = "Conectado - Clave simétrica derivada";
+          const sd = tv("statusDot");
+          if (sd) sd.classList.add("active");
+          showOps(true);
+          showToast("Conexión establecida");
+
+          // display short fingerprint for manual comparison if desired
+          try {
+            const fp = Array.from(confirmTag.slice(0, 8))
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join("");
+            // if you want to show it in UI, create a place to display it. currently we log.
+            console.log("confirm fingerprint (short):", fp);
+          } catch (e) {}
+        } catch (e) {
+          console.error("connectPeer:", e);
+          tv("peerState").textContent = "❌ Error: " + (e.message || String(e));
+          tv("peerState").style.color = "#e94560";
+          showToast("Error al conectar");
+        }
+      }
+
+      function clearText() {
+        const el = tv("ptIn");
+        if (el) el.value = "";
+        const out = tv("ctOut");
+        if (out) {
+          out.textContent = "El mensaje cifrado aparecerá aquí...";
+          out.classList.add("empty");
+        }
+      }
+      function clearCTin() {
+        const el = tv("ctIn");
+        if (el) el.value = "";
+        const out = tv("ptOut");
+        if (out) {
+          out.textContent = "El mensaje descifrado aparecerá aquí...";
+          out.classList.add("empty");
+        }
+      }
+
+      async function encryptText() {
+        if (!symSession) {
+          showToast("❌ No hay clave. Conecta primero", 1400);
+          return;
+        }
+        const ptEl = tv("ptIn");
+        if (!ptEl) {
+          showToast("Campo ptIn no encontrado");
+          return;
+        }
+        const text = ptEl.value;
+        if (!text) {
+          showToast("Escribe un mensaje primero");
+          return;
+        }
+        try {
+          const out = await encryptMessage(symSession, text);
+          const ctOut = tv("ctOut");
+          if (ctOut) {
+            ctOut.textContent = out;
+            ctOut.classList.remove("empty");
+          }
+          showToast("Mensaje cifrado");
+        } catch (e) {
+          console.error("encryptText:", e);
+          showToast("Cifrado falló");
+        }
+      }
+
+      async function decryptText() {
+        if (!symSession) {
+          showToast("❌ No hay clave. Conecta primero", 1400);
+          return;
+        }
+        const ctEl = tv("ctIn");
+        if (!ctEl) {
+          showToast("Campo ctIn no encontrado");
+          return;
+        }
+        const s = ctEl.value.trim();
+        if (!s) {
+          showToast("Pega un mensaje cifrado primero");
+          return;
+        }
+        try {
+          const dec = await decryptMessage(symSession, s);
+          const ptOut = tv("ptOut");
+          if (ptOut) {
+            ptOut.textContent = dec;
+            ptOut.classList.remove("empty");
+          }
+          showToast("Mensaje descifrado");
+        } catch (e) {
+          console.error("decryptText:", e);
+          const ptOut = tv("ptOut");
+          if (ptOut) {
+            ptOut.textContent = "❌ Error al descifrar";
+            ptOut.classList.remove("empty");
+          }
+          showToast("Descifrado falló");
+        }
+      }
+
+      async function copyOutput(elemId) {
+        const elem = tv(elemId);
+        if (!elem) return;
+        if (elem.classList.contains("empty")) return;
+        const text = elem.textContent.trim();
+        if (!text) return;
+        await copyText(text);
+      }
+
+      /* ---------- File encrypt / decrypt ---------- */
+      async function encryptFile() {
+        if (!symSession) {
+          showToast("❌ No hay clave. Conecta primero", 1400);
+          return;
+        }
+        const fi = (tv("fileEnc") || {}).files?.[0];
+        if (!fi) {
+          showToast("Selecciona un archivo primero");
+          return;
+        }
+
+        if (fi.size > 200 * 1024 * 1024) {
+          showToast("Archivo muy grande (máx 200MB)");
+          return;
+        }
+
+        try {
+          const arr = new Uint8Array(await fi.arrayBuffer());
+          const fname = new TextEncoder().encode(fi.name);
+          if (fname.length > 0xffff) {
+            showToast("Nombre de archivo muy largo");
+            return;
+          }
+
+          const { iv, ct } = await symSession.encrypt(arr, fname);
+          const header = new Uint8Array(
+            2 + fname.length + iv.length + ct.length
+          );
+          header.set(uint16be(fname.length), 0);
+          header.set(fname, 2);
+          header.set(iv, 2 + fname.length);
+          header.set(ct, 2 + fname.length + iv.length);
+
+          const blob = new Blob([header], { type: "application/octet-stream" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = fi.name + ".enc";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          showToast("Archivo cifrado y descargado");
+
+          try {
+            arr.fill(0);
+          } catch (e) {}
+        } catch (e) {
+          console.error("encryptFile:", e);
+          showToast("Error cifrando archivo");
+        }
+      }
+
+      async function decryptFile() {
+        if (!symSession) {
+          showToast("❌ No hay clave. Conecta primero", 1400);
+          return;
+        }
+        const fi = (tv("fileDec") || {}).files?.[0];
+        if (!fi) {
+          showToast("Selecciona un archivo .enc primero");
+          return;
+        }
+
+        try {
+          const buf = new Uint8Array(await fi.arrayBuffer());
+          if (buf.length < 2 + 12 + 16) {
+            showToast("Archivo muy pequeño o corrupto");
+            return;
+          }
+          const namelen = readUint16be(buf, 0);
+          if (buf.length < 2 + namelen + 12 + 16) {
+            showToast("Archivo truncado");
+            return;
+          }
+          const fname = buf.slice(2, 2 + namelen);
+          const nonceOff = 2 + namelen;
+          const iv = buf.slice(nonceOff, nonceOff + 12);
+          const ct = buf.slice(nonceOff + 12);
+
+          const ptbuf = await symSession.decrypt(iv, ct, fname);
+          const outName = new TextDecoder().decode(fname);
+          const blob = new Blob([ptbuf], { type: "application/octet-stream" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = outName;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          showToast("Archivo descifrado y descargado");
+
+          try {
+            new Uint8Array(ptbuf).fill(0);
+          } catch (e) {}
+        } catch (e) {
+          console.error("decryptFile:", e);
+          showToast("Descifrado falló. ¿Token correcto?");
+        }
+      }
+
+      /* ---------- Message pack helpers ---------- */
+      async function encryptMessage(session, plaintextStr) {
+        const pt = new TextEncoder().encode(plaintextStr);
+        const { iv, ct } = await session.encrypt(pt);
+        const out = new Uint8Array(iv.length + ct.length);
+        out.set(iv, 0);
+        out.set(ct, iv.length);
+        try {
+          pt.fill(0);
+        } catch (e) {}
+        return b64urlEncode(out);
+      }
+
+      async function decryptMessage(session, packagedB64) {
+        const raw = b64urlDecode(packagedB64);
+        if (raw.length < 12 + 16) throw new Error("Ciphertext too short");
+        const iv = raw.slice(0, 12);
+        const ct = raw.slice(12);
+        const pt = await session.decrypt(iv, ct);
+        const s = new TextDecoder().decode(pt);
+        try {
+          pt.fill(0);
+        } catch (e) {}
+        return s;
+      }
+
+      /* ---------- Expose global handlers used by HTML ---------- */
+      window.copyMyToken = copyMyToken;
+      window.regenerateKey = regenerateKey;
+      window.generateEphemeral = generateEphemeral;
+      window.downloadPubToken = downloadPubToken;
+      window.connectPeer = connectPeer;
+      window.encryptText = encryptText;
+      window.decryptText = decryptText;
+      window.clearText = clearText;
+      window.clearCTin = clearCTin;
+      window.copyOutput = copyOutput;
+      window.encryptFile = encryptFile;
+      window.decryptFile = decryptFile;
+
+      /* ---------- Auto-init on load ---------- */
+      (async function init() {
+        try {
+          tv("status").textContent = "Inicializando...";
+          await generateEphemeral();
+          tv("status").textContent = "Token listo";
+        } catch (e) {
+          console.error("init failed:", e);
+          tv("status").textContent = "❌ Error al inicializar";
+        }
+      })();
+    </script>
+  </body>
+</html>
